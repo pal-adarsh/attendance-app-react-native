@@ -18,8 +18,9 @@ A cross-platform mobile application built with React Native and Expo that helps 
 - **Onboarding** - User-friendly setup screen for first-time users
 
 ## 📱 ScreenShot
-![attendance app](https://github.com/user-attachments/assets/cefd87b8-da30-4271-9f3d-638ef2f95fe9)
-
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/cefd87b8-da30-4271-9f3d-638ef2f95fe9" width="300"/>
+</p>
 
 ## 🛠️ Tech Stack
 
