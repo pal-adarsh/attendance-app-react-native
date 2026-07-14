@@ -5,7 +5,6 @@ import { PaperProvider } from 'react-native-paper';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StorageService } from './src/utils/storage';
 import { ThemeProvider, useThemeContext } from './src/utils/ThemeContext';
 
