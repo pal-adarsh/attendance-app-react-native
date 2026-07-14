@@ -1,30 +1,26 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Animated } from 'react-native';
-import { Text, Button, useTheme, IconButton } from 'react-native-paper';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, StyleSheet, ScrollView } from 'react-native';
+import { Text, Button, useTheme } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
+import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import GradientCard from '../components/GradientCard';
 import { StorageService } from '../utils/storage';
+import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
 import { gradients, shadows } from '../constants/theme';
 
 const DailyAttendanceScreen = () => {
     const theme = useTheme();
+    const { isDark } = useThemeContext();
     const [subjects, setSubjects] = useState([]);
     const [todaySubjects, setTodaySubjects] = useState([]);
     const [attendanceStatus, setAttendanceStatus] = useState({});
     const [studentName, setStudentName] = useState('');
 
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-
     useFocusEffect(
         useCallback(() => {
             loadData();
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 500,
-                useNativeDriver: true,
-            }).start();
         }, [])
     );
 
@@ -73,6 +69,7 @@ const DailyAttendanceScreen = () => {
             s.id === subjectId ? { ...s, attended, total } : s
         );
         await StorageService.saveSubjects(updatedSubjects);
+        setSubjects(updatedSubjects);
     };
 
     const getTodayDate = () => {
@@ -89,16 +86,20 @@ const DailyAttendanceScreen = () => {
         return day === 0 || day === 6;
     };
 
+    const backgroundGradient = isDark ? gradients.darkBackground : gradients.lightBackground;
+    const cardGradient = isDark ? gradients.darkCard : gradients.lightCard;
+    const defaultButtonColors = isDark ? ['#2C2C2C', '#2C2C2C'] : ['#E2E8F0', '#E2E8F0'];
+
     return (
         <LinearGradient
-            colors={gradients.background}
+            colors={backgroundGradient}
             style={styles.container}
         >
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Header */}
-                <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
+                <Animated.View entering={FadeInDown.duration(500)} style={styles.header}>
                     <View>
-                        <Text variant="headlineMedium" style={styles.greeting}>
+                        <Text variant="headlineMedium" style={[styles.greeting, { color: theme.colors.text }]}>
                             Hello, {studentName}! 👋
                         </Text>
                         <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
@@ -109,39 +110,43 @@ const DailyAttendanceScreen = () => {
 
                 {/* Today's Lectures */}
                 {isWeekend() ? (
-                    <GradientCard gradient={gradients.card} style={styles.emptyCard}>
-                        <View style={styles.emptyContent}>
-                            <Text style={styles.emptyEmoji}>🎉</Text>
-                            <Text variant="titleLarge" style={styles.emptyTitle}>
-                                It's the weekend!
-                            </Text>
-                            <Text variant="bodyMedium" style={[styles.emptySubtitle, { color: theme.colors.onSurfaceVariant }]}>
-                                No lectures today. Enjoy your day off!
-                            </Text>
-                        </View>
-                    </GradientCard>
+                    <Animated.View entering={FadeInDown.delay(150).duration(500)}>
+                        <GradientCard gradient={cardGradient} style={styles.emptyCard}>
+                            <View style={styles.emptyContent}>
+                                <Text style={styles.emptyEmoji}>🎉</Text>
+                                <Text variant="titleLarge" style={[styles.emptyTitle, { color: theme.colors.text }]}>
+                                    It's the weekend!
+                                </Text>
+                                <Text variant="bodyMedium" style={[styles.emptySubtitle, { color: theme.colors.onSurfaceVariant }]}>
+                                    No lectures today. Enjoy your day off!
+                                </Text>
+                            </View>
+                        </GradientCard>
+                    </Animated.View>
                 ) : todaySubjects.length === 0 ? (
-                    <GradientCard gradient={gradients.card} style={styles.emptyCard}>
-                        <View style={styles.emptyContent}>
-                            <Text style={styles.emptyEmoji}>📅</Text>
-                            <Text variant="titleLarge" style={styles.emptyTitle}>
-                                No lectures today
-                            </Text>
-                            <Text variant="bodyMedium" style={[styles.emptySubtitle, { color: theme.colors.onSurfaceVariant }]}>
-                                Go to Timetable tab to set up your schedule
-                            </Text>
-                        </View>
-                    </GradientCard>
+                    <Animated.View entering={FadeInDown.delay(150).duration(500)}>
+                        <GradientCard gradient={cardGradient} style={styles.emptyCard}>
+                            <View style={styles.emptyContent}>
+                                <Text style={styles.emptyEmoji}>📅</Text>
+                                <Text variant="titleLarge" style={[styles.emptyTitle, { color: theme.colors.text }]}>
+                                    No lectures today
+                                </Text>
+                                <Text variant="bodyMedium" style={[styles.emptySubtitle, { color: theme.colors.onSurfaceVariant }]}>
+                                    Go to Timetable tab to set up your schedule
+                                </Text>
+                            </View>
+                        </GradientCard>
+                    </Animated.View>
                 ) : (
                     <>
-                        <View style={styles.sectionHeader}>
-                            <Text variant="titleLarge" style={styles.sectionTitle}>
+                        <Animated.View entering={FadeInDown.delay(100).duration(500)} style={styles.sectionHeader}>
+                            <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.text }]}>
                                 Today's Lectures
                             </Text>
                             <View style={styles.badge}>
                                 <Text style={styles.badgeText}>{todaySubjects.length}</Text>
                             </View>
-                        </View>
+                        </Animated.View>
 
                         {todaySubjects.map((subject, index) => {
                             const status = attendanceStatus[subject.id];
@@ -150,41 +155,36 @@ const DailyAttendanceScreen = () => {
                             return (
                                 <Animated.View
                                     key={subject.id}
-                                    style={{
-                                        opacity: fadeAnim,
-                                        transform: [{
-                                            translateY: fadeAnim.interpolate({
-                                                inputRange: [0, 1],
-                                                outputRange: [50, 0],
-                                            }),
-                                        }],
-                                    }}
+                                    entering={FadeInDown.delay(150 + index * 100).duration(500)}
                                 >
-                                    <GradientCard gradient={gradients.card} style={styles.lectureCard}>
+                                    <GradientCard gradient={cardGradient} style={styles.lectureCard}>
                                         <View style={styles.lectureContent}>
                                             <View style={styles.lectureHeader}>
-                                                <Text variant="titleLarge" style={styles.lectureName}>
+                                                <Text variant="titleLarge" style={[styles.lectureName, { color: theme.colors.text }]}>
                                                     {subject.name}
                                                 </Text>
                                                 {isMarked && (
-                                                    <View style={[
-                                                        styles.statusBadge,
-                                                        {
-                                                            backgroundColor: status === 'present'
-                                                                ? theme.colors.attendanceGreen
-                                                                : theme.colors.attendanceRed
-                                                        }
-                                                    ]}>
+                                                    <Animated.View
+                                                        entering={ZoomIn.springify()}
+                                                        style={[
+                                                            styles.statusBadge,
+                                                            {
+                                                                backgroundColor: status === 'present'
+                                                                    ? theme.colors.attendanceGreen
+                                                                    : theme.colors.attendanceRed
+                                                            }
+                                                        ]}
+                                                    >
                                                         <Text style={styles.statusText}>
                                                             {status === 'present' ? '✓' : '✗'}
                                                         </Text>
-                                                    </View>
+                                                    </Animated.View>
                                                 )}
                                             </View>
 
                                             <View style={styles.buttonContainer}>
                                                 <LinearGradient
-                                                    colors={status === 'present' ? gradients.success : ['#2C2C2C', '#2C2C2C']}
+                                                    colors={status === 'present' ? gradients.success : defaultButtonColors}
                                                     style={[styles.buttonGradient, shadows.small]}
                                                 >
                                                     <Button
@@ -193,7 +193,7 @@ const DailyAttendanceScreen = () => {
                                                         style={styles.button}
                                                         labelStyle={[
                                                             styles.buttonLabel,
-                                                            status === 'present' && { color: '#FFF' }
+                                                            status === 'present' ? { color: '#FFF' } : { color: theme.colors.onSurface }
                                                         ]}
                                                         buttonColor="transparent"
                                                     >
@@ -202,7 +202,7 @@ const DailyAttendanceScreen = () => {
                                                 </LinearGradient>
 
                                                 <LinearGradient
-                                                    colors={status === 'absent' ? gradients.danger : ['#2C2C2C', '#2C2C2C']}
+                                                    colors={status === 'absent' ? gradients.danger : defaultButtonColors}
                                                     style={[styles.buttonGradient, shadows.small]}
                                                 >
                                                     <Button
@@ -211,7 +211,7 @@ const DailyAttendanceScreen = () => {
                                                         style={styles.button}
                                                         labelStyle={[
                                                             styles.buttonLabel,
-                                                            status === 'absent' && { color: '#FFF' }
+                                                            status === 'absent' ? { color: '#FFF' } : { color: theme.colors.onSurface }
                                                         ]}
                                                         buttonColor="transparent"
                                                     >
@@ -329,3 +329,4 @@ const styles = StyleSheet.create({
 });
 
 export default DailyAttendanceScreen;
+

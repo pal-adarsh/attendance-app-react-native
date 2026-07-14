@@ -1,30 +1,27 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { View, StyleSheet, ScrollView, Animated } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Button, useTheme } from 'react-native-paper';
 import { Calendar } from 'react-native-calendars';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import GradientCard from '../components/GradientCard';
 import { StorageService } from '../utils/storage';
+import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
 import { gradients, shadows } from '../constants/theme';
 
 const CalendarScreen = () => {
     const theme = useTheme();
+    const { isDark } = useThemeContext();
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [subjects, setSubjects] = useState([]);
     const [timetable, setTimetable] = useState({});
     const [attendanceStatus, setAttendanceStatus] = useState({});
-    const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useFocusEffect(
         useCallback(() => {
             loadData();
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 500,
-                useNativeDriver: true,
-            }).start();
         }, [])
     );
 
@@ -81,10 +78,14 @@ const CalendarScreen = () => {
     const isWeekend = selectedDateObj.getDay() === 0 || selectedDateObj.getDay() === 6;
     const isFuture = selectedDateObj > new Date();
 
+    const backgroundGradient = isDark ? gradients.darkBackground : gradients.lightBackground;
+    const cardGradient = isDark ? gradients.darkCard : gradients.lightCard;
+    const defaultButtonColors = isDark ? ['#2C2C2C', '#2C2C2C'] : ['#E2E8F0', '#E2E8F0'];
+
     return (
-        <LinearGradient colors={gradients.background} style={styles.container}>
+        <LinearGradient colors={backgroundGradient} style={styles.container}>
             <ScrollView>
-                <View style={styles.calendarContainer}>
+                <Animated.View entering={FadeInDown.duration(500)} style={styles.calendarContainer}>
                     <Calendar
                         current={selectedDate}
                         onDayPress={(day) => {
@@ -94,31 +95,35 @@ const CalendarScreen = () => {
                         markedDates={{
                             [selectedDate]: {
                                 selected: true,
-                                selectedColor: '#BB86FC',
+                                selectedColor: theme.colors.primary,
                                 selectedTextColor: '#FFF',
                             }
                         }}
                         theme={{
                             backgroundColor: 'transparent',
                             calendarBackground: 'transparent',
-                            textSectionTitleColor: '#FFF',
-                            selectedDayBackgroundColor: '#BB86FC',
+                            textSectionTitleColor: isDark ? '#FFF' : '#475569',
+                            selectedDayBackgroundColor: theme.colors.primary,
                             selectedDayTextColor: '#FFF',
-                            todayTextColor: '#BB86FC',
-                            dayTextColor: '#FFF',
-                            textDisabledColor: '#666',
-                            monthTextColor: '#FFF',
-                            arrowColor: '#BB86FC',
+                            todayTextColor: theme.colors.primary,
+                            dayTextColor: isDark ? '#FFF' : '#0F172A',
+                            textDisabledColor: isDark ? '#666' : '#94A3B8',
+                            monthTextColor: isDark ? '#FFF' : '#0F172A',
+                            arrowColor: theme.colors.primary,
                             textDayFontWeight: '500',
                             textMonthFontWeight: 'bold',
                             textDayHeaderFontWeight: '600',
                         }}
                         maxDate={new Date().toISOString().split('T')[0]}
                     />
-                </View>
+                </Animated.View>
 
-                <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-                    <Text variant="titleLarge" style={styles.dateTitle}>
+                <Animated.View 
+                    key={selectedDate}
+                    entering={FadeInDown.duration(400)}
+                    style={styles.content}
+                >
+                    <Text variant="titleLarge" style={[styles.dateTitle, { color: theme.colors.text }]}>
                         {selectedDateObj.toLocaleDateString('en-US', {
                             weekday: 'long',
                             year: 'numeric',
@@ -128,28 +133,28 @@ const CalendarScreen = () => {
                     </Text>
 
                     {isFuture ? (
-                        <GradientCard gradient={gradients.card} style={styles.infoCard}>
+                        <GradientCard gradient={cardGradient} style={styles.infoCard}>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoEmoji}>🚫</Text>
-                                <Text variant="titleMedium" style={styles.infoTitle}>
+                                <Text variant="titleMedium" style={[styles.infoTitle, { color: theme.colors.text }]}>
                                     Cannot mark attendance for future dates
                                 </Text>
                             </View>
                         </GradientCard>
                     ) : isWeekend ? (
-                        <GradientCard gradient={gradients.card} style={styles.infoCard}>
+                        <GradientCard gradient={cardGradient} style={styles.infoCard}>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoEmoji}>🎉</Text>
-                                <Text variant="titleMedium" style={styles.infoTitle}>
+                                <Text variant="titleMedium" style={[styles.infoTitle, { color: theme.colors.text }]}>
                                     No lectures on weekends
                                 </Text>
                             </View>
                         </GradientCard>
                     ) : dateSubjects.length === 0 ? (
-                        <GradientCard gradient={gradients.card} style={styles.infoCard}>
+                        <GradientCard gradient={cardGradient} style={styles.infoCard}>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoEmoji}>📅</Text>
-                                <Text variant="titleMedium" style={styles.infoTitle}>
+                                <Text variant="titleMedium" style={[styles.infoTitle, { color: theme.colors.text }]}>
                                     No lectures scheduled for this day
                                 </Text>
                             </View>
@@ -159,15 +164,15 @@ const CalendarScreen = () => {
                             const status = attendanceStatus[subject.id];
 
                             return (
-                                <GradientCard key={subject.id} gradient={gradients.card} style={styles.subjectCard}>
+                                <GradientCard key={subject.id} gradient={cardGradient} style={styles.subjectCard}>
                                     <View style={styles.subjectContent}>
-                                        <Text variant="titleMedium" style={styles.subjectName}>
+                                        <Text variant="titleMedium" style={[styles.subjectName, { color: theme.colors.text }]}>
                                             {subject.name}
                                         </Text>
 
                                         <View style={styles.buttonContainer}>
                                             <LinearGradient
-                                                colors={status === 'present' ? gradients.success : ['#2C2C2C', '#2C2C2C']}
+                                                colors={status === 'present' ? gradients.success : defaultButtonColors}
                                                 style={[styles.buttonGradient, shadows.small]}
                                             >
                                                 <Button
@@ -176,7 +181,7 @@ const CalendarScreen = () => {
                                                     style={styles.button}
                                                     labelStyle={[
                                                         styles.buttonLabel,
-                                                        status === 'present' && { color: '#FFF' }
+                                                        status === 'present' ? { color: '#FFF' } : { color: theme.colors.onSurface }
                                                     ]}
                                                     buttonColor="transparent"
                                                 >
@@ -185,7 +190,7 @@ const CalendarScreen = () => {
                                             </LinearGradient>
 
                                             <LinearGradient
-                                                colors={status === 'absent' ? gradients.danger : ['#2C2C2C', '#2C2C2C']}
+                                                colors={status === 'absent' ? gradients.danger : defaultButtonColors}
                                                 style={[styles.buttonGradient, shadows.small]}
                                             >
                                                 <Button
@@ -194,7 +199,7 @@ const CalendarScreen = () => {
                                                     style={styles.button}
                                                     labelStyle={[
                                                         styles.buttonLabel,
-                                                        status === 'absent' && { color: '#FFF' }
+                                                        status === 'absent' ? { color: '#FFF' } : { color: theme.colors.onSurface }
                                                     ]}
                                                     buttonColor="transparent"
                                                 >

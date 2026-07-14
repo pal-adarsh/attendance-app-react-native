@@ -1,30 +1,49 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { View, StyleSheet, FlatList, Alert, Animated } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, StyleSheet, FlatList, Alert } from 'react-native';
 import { FAB, useTheme, Text, IconButton } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  FadeInDown,
+} from 'react-native-reanimated';
 import GradientCard from '../components/GradientCard';
 import AddEditSubjectModal from '../components/AddEditSubjectModal';
+import AnimatedProgressBar from '../components/AnimatedProgressBar';
 import { StorageService } from '../utils/storage';
+import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
 import { gradients, shadows } from '../constants/theme';
 import { calculatePercentage, getStatus } from '../utils/attendance';
 
 const SubjectsScreen = () => {
     const theme = useTheme();
+    const { isDark } = useThemeContext();
     const [subjects, setSubjects] = useState([]);
     const [modalVisible, setModalVisible] = useState(false);
     const [editingSubject, setEditingSubject] = useState(null);
-    const fadeAnim = useRef(new Animated.Value(0)).current;
+    
+    // FAB breathing animation
+    const fabScale = useSharedValue(1);
+
+    useEffect(() => {
+        fabScale.value = withRepeat(
+            withSequence(
+                withTiming(1.08, { duration: 1000 }),
+                withTiming(1.0, { duration: 1000 })
+            ),
+            -1,
+            true
+        );
+    }, []);
 
     useFocusEffect(
         useCallback(() => {
             loadData();
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 500,
-                useNativeDriver: true,
-            }).start();
         }, [])
     );
 
@@ -46,22 +65,23 @@ const SubjectsScreen = () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     };
 
-    const deleteSubject = async (id) => {
+    const deleteSubject = (id) => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         Alert.alert(
-            "Delete Subject",
-            "Are you sure? This will also remove all attendance records for this subject.",
+            'Delete Subject',
+            'Are you sure you want to delete this subject?',
             [
-                { text: "Cancel", style: "cancel" },
+                { text: 'Cancel', style: 'cancel' },
                 {
-                    text: "Delete",
-                    style: "destructive",
+                    text: 'Delete',
+                    style: 'destructive',
                     onPress: async () => {
                         const newSubjects = subjects.filter(s => s.id !== id);
                         setSubjects(newSubjects);
                         await StorageService.saveSubjects(newSubjects);
-                    }
-                }
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    },
+                },
             ]
         );
     };
@@ -76,18 +96,27 @@ const SubjectsScreen = () => {
         setModalVisible(true);
     };
 
+    const animatedFabStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ scale: fabScale.value }],
+        };
+    });
+
+    const backgroundGradient = isDark ? gradients.darkBackground : gradients.lightBackground;
+    const cardGradient = isDark ? gradients.darkCard : gradients.lightCard;
+
     return (
-        <LinearGradient colors={gradients.background} style={styles.container}>
+        <LinearGradient colors={backgroundGradient} style={styles.container}>
             {subjects.length === 0 ? (
-                <View style={styles.emptyState}>
+                <Animated.View entering={FadeInDown.duration(500)} style={styles.emptyState}>
                     <Text style={styles.emptyEmoji}>📚</Text>
-                    <Text variant="titleLarge" style={styles.emptyTitle}>
+                    <Text variant="titleLarge" style={[styles.emptyTitle, { color: theme.colors.text }]}>
                         No subjects added yet
                     </Text>
                     <Text variant="bodyMedium" style={[styles.emptySubtitle, { color: theme.colors.onSurfaceVariant }]}>
                         Tap the + button to add one
                     </Text>
-                </View>
+                </Animated.View>
             ) : (
                 <FlatList
                     data={subjects}
@@ -102,22 +131,12 @@ const SubjectsScreen = () => {
                         }[status];
 
                         return (
-                            <Animated.View
-                                style={{
-                                    opacity: fadeAnim,
-                                    transform: [{
-                                        translateY: fadeAnim.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [50, 0],
-                                        }),
-                                    }],
-                                }}
-                            >
-                                <GradientCard gradient={gradients.card} style={styles.card}>
+                            <Animated.View entering={FadeInDown.delay(index * 80).duration(450)}>
+                                <GradientCard gradient={cardGradient} style={styles.card}>
                                     <View style={styles.cardContent}>
                                         <View style={styles.header}>
                                             <View style={{ flex: 1 }}>
-                                                <Text variant="titleLarge" style={styles.title}>
+                                                <Text variant="titleLarge" style={[styles.title, { color: theme.colors.text }]}>
                                                     {item.name}
                                                 </Text>
                                                 <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
@@ -145,17 +164,14 @@ const SubjectsScreen = () => {
                                             </View>
                                         </View>
 
-                                        {/* Progress Bar */}
+                                        {/* Premium Animated Progress Bar */}
                                         <View style={styles.progressContainer}>
-                                            <View style={styles.progressBackground}>
-                                                <LinearGradient
-                                                    colors={statusGradient}
-                                                    style={[
-                                                        styles.progressFill,
-                                                        { width: `${Math.min(percentage, 100)}%` }
-                                                    ]}
-                                                />
-                                            </View>
+                                            <AnimatedProgressBar
+                                                progress={item.total === 0 ? 0 : percentage / 100}
+                                                colors={statusGradient}
+                                                height={10}
+                                                style={styles.progressBackground}
+                                            />
                                             <LinearGradient
                                                 colors={statusGradient}
                                                 style={styles.percentageBadge}
@@ -174,17 +190,19 @@ const SubjectsScreen = () => {
                 />
             )}
 
-            <LinearGradient
-                colors={gradients.primary}
-                style={[styles.fab, shadows.large]}
-            >
-                <FAB
-                    icon="plus"
-                    style={styles.fabButton}
-                    color="#FFF"
-                    onPress={openAddModal}
-                />
-            </LinearGradient>
+            <Animated.View style={[styles.fab, animatedFabStyle]}>
+                <LinearGradient
+                    colors={gradients.primary}
+                    style={[styles.fabGradient, shadows.large]}
+                >
+                    <FAB
+                        icon="plus"
+                        style={styles.fabButton}
+                        color="#FFF"
+                        onPress={openAddModal}
+                    />
+                </LinearGradient>
+            </Animated.View>
 
             <AddEditSubjectModal
                 visible={modalVisible}
@@ -226,17 +244,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
+        marginTop: 4,
     },
     progressBackground: {
         flex: 1,
-        height: 8,
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        borderRadius: 4,
-        overflow: 'hidden',
-    },
-    progressFill: {
-        height: '100%',
-        borderRadius: 4,
+        height: 10,
     },
     percentageBadge: {
         paddingHorizontal: 10,
@@ -272,7 +284,10 @@ const styles = StyleSheet.create({
         margin: 16,
         right: 0,
         bottom: 0,
+    },
+    fabGradient: {
         borderRadius: 28,
+        overflow: 'hidden',
     },
     fabButton: {
         backgroundColor: 'transparent',
@@ -280,3 +295,4 @@ const styles = StyleSheet.create({
 });
 
 export default SubjectsScreen;
+

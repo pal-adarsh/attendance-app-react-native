@@ -1,30 +1,27 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, StyleSheet, ScrollView, FlatList, Animated } from 'react-native';
+import { View, StyleSheet, ScrollView, FlatList } from 'react-native';
 import { Text, Chip, useTheme } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
+import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
 import GradientCard from '../components/GradientCard';
 import { StorageService } from '../utils/storage';
+import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
-import { gradients, shadows } from '../constants/theme';
+import { gradients, shadows, theme as appTheme } from '../constants/theme';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
 const TimetableScreen = () => {
     const theme = useTheme();
+    const { isDark } = useThemeContext();
     const [subjects, setSubjects] = useState([]);
     const [timetable, setTimetable] = useState({});
     const [selectedDay, setSelectedDay] = useState('Monday');
-    const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useFocusEffect(
         useCallback(() => {
             loadData();
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 500,
-                useNativeDriver: true,
-            }).start();
         }, [])
     );
 
@@ -58,10 +55,14 @@ const TimetableScreen = () => {
         return (timetable[selectedDay] || []).includes(subjectId);
     };
 
+    const backgroundGradient = isDark ? gradients.darkBackground : gradients.lightBackground;
+    const cardGradient = isDark ? gradients.darkCard : gradients.lightCard;
+    const defaultButtonColors = isDark ? ['#2C2C2C', '#2C2C2C'] : ['#E2E8F0', '#E2E8F0'];
+
     return (
-        <LinearGradient colors={gradients.background} style={styles.container}>
+        <LinearGradient colors={backgroundGradient} style={styles.container}>
             {/* Day Selector */}
-            <View style={styles.daySelectorContainer}>
+            <View style={[styles.daySelectorContainer, { borderBottomColor: theme.colors.surfaceVariant }]}>
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -72,7 +73,7 @@ const TimetableScreen = () => {
                         return (
                             <LinearGradient
                                 key={day}
-                                colors={isSelected ? gradients.primary : ['#2C2C2C', '#2C2C2C']}
+                                colors={isSelected ? gradients.primary : defaultButtonColors}
                                 style={[styles.dayChipGradient, shadows.small]}
                             >
                                 <Chip
@@ -84,7 +85,7 @@ const TimetableScreen = () => {
                                     style={styles.dayChip}
                                     textStyle={[
                                         styles.dayChipText,
-                                        isSelected && { color: '#FFF', fontWeight: 'bold' }
+                                        isSelected ? { color: '#FFF', fontWeight: 'bold' } : { color: theme.colors.onSurface }
                                     ]}
                                     mode="flat"
                                 >
@@ -97,18 +98,22 @@ const TimetableScreen = () => {
             </View>
 
             {/* Subject Selection */}
-            <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+            <Animated.View 
+                key={selectedDay}
+                entering={FadeInDown.duration(400)}
+                style={styles.content}
+            >
                 <View style={styles.sectionHeader}>
-                    <Text variant="titleLarge" style={styles.sectionTitle}>
+                    <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.text }]}>
                         Select subjects for {selectedDay}
                     </Text>
                 </View>
 
                 {subjects.length === 0 ? (
-                    <GradientCard gradient={gradients.card} style={styles.emptyCard}>
+                    <GradientCard gradient={cardGradient} style={styles.emptyCard}>
                         <View style={styles.emptyContent}>
                             <Text style={styles.emptyEmoji}>📚</Text>
-                            <Text variant="titleMedium" style={styles.emptyTitle}>
+                            <Text variant="titleMedium" style={[styles.emptyTitle, { color: theme.colors.text }]}>
                                 No subjects added yet
                             </Text>
                             <Text variant="bodyMedium" style={[styles.emptySubtitle, { color: theme.colors.onSurfaceVariant }]}>
@@ -120,27 +125,33 @@ const TimetableScreen = () => {
                     <FlatList
                         data={subjects}
                         keyExtractor={item => item.id}
-                        renderItem={({ item }) => {
+                        renderItem={({ item, index }) => {
                             const isSelected = isSubjectSelected(item.id);
                             return (
-                                <LinearGradient
-                                    colors={isSelected ? gradients.primary : gradients.card}
-                                    style={[styles.subjectChipGradient, shadows.small]}
+                                <Animated.View 
+                                    entering={FadeInDown.delay(index * 60).duration(350)}
+                                    layout={Layout.springify()}
+                                    style={styles.subjectChipContainer}
                                 >
-                                    <Chip
-                                        selected={isSelected}
-                                        onPress={() => toggleSubject(item.id)}
-                                        style={styles.subjectChip}
-                                        textStyle={[
-                                            styles.subjectChipText,
-                                            isSelected && { color: '#FFF', fontWeight: 'bold' }
-                                        ]}
-                                        icon={isSelected ? 'check' : 'plus'}
-                                        mode="flat"
+                                    <LinearGradient
+                                        colors={isSelected ? gradients.primary : cardGradient}
+                                        style={[styles.subjectChipGradient, shadows.small]}
                                     >
-                                        {item.name}
-                                    </Chip>
-                                </LinearGradient>
+                                        <Chip
+                                            selected={isSelected}
+                                            onPress={() => toggleSubject(item.id)}
+                                            style={styles.subjectChip}
+                                            textStyle={[
+                                                styles.subjectChipText,
+                                                isSelected ? { color: '#FFF', fontWeight: 'bold' } : { color: theme.colors.onSurface }
+                                            ]}
+                                            icon={isSelected ? 'check' : 'plus'}
+                                            mode="flat"
+                                        >
+                                            {item.name}
+                                        </Chip>
+                                    </LinearGradient>
+                                </Animated.View>
                             );
                         }}
                         numColumns={2}
@@ -151,17 +162,20 @@ const TimetableScreen = () => {
             </Animated.View>
 
             {/* Summary */}
-            <LinearGradient
-                colors={gradients.card}
-                style={[styles.summary, shadows.medium]}
-            >
-                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                    {(timetable[selectedDay] || []).length} subject(s) on {selectedDay}
-                </Text>
-            </LinearGradient>
+            <Animated.View entering={FadeInDown.delay(200)}>
+                <LinearGradient
+                    colors={cardGradient}
+                    style={[styles.summary, shadows.medium]}
+                >
+                    <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                        {(timetable[selectedDay] || []).length} subject(s) on {selectedDay}
+                    </Text>
+                </LinearGradient>
+            </Animated.View>
         </LinearGradient>
     );
 };
+
 
 const styles = StyleSheet.create({
     container: {
@@ -200,10 +214,12 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         marginBottom: 12,
     },
-    subjectChipGradient: {
+    subjectChipContainer: {
         flex: 0.48,
+    },
+    subjectChipGradient: {
+        width: '100%',
         borderRadius: 20,
-        marginBottom: 8,
     },
     subjectChip: {
         backgroundColor: 'transparent',
@@ -242,3 +258,4 @@ const styles = StyleSheet.create({
 });
 
 export default TimetableScreen;
+

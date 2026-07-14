@@ -3,11 +3,15 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PaperProvider } from 'react-native-paper';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { theme } from './src/constants/theme';
 import { StorageService } from './src/utils/storage';
+import { ThemeProvider, useThemeContext } from './src/utils/ThemeContext';
+
+// Components
+import CustomTabBar from './src/components/CustomTabBar';
+import SplashLoader from './src/components/SplashLoader';
 
 // Screens
 import OnboardingScreen from './src/screens/OnboardingScreen';
@@ -21,22 +25,22 @@ const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function MainTabs() {
+  const { theme } = useThemeContext();
   return (
     <Tab.Navigator
+      tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerStyle: {
           backgroundColor: theme.colors.surface,
+          shadowColor: 'transparent',
+          elevation: 0,
+          borderBottomWidth: 1,
+          borderBottomColor: theme.colors.surfaceVariant,
         },
         headerTintColor: theme.colors.text,
         headerTitleStyle: {
           fontWeight: 'bold',
         },
-        tabBarStyle: {
-          backgroundColor: theme.colors.surface,
-          borderTopColor: 'rgba(255,255,255,0.1)',
-        },
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
       }}
     >
       <Tab.Screen
@@ -44,55 +48,35 @@ function MainTabs() {
         component={DailyAttendanceScreen}
         options={{
           title: 'Today',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="home" size={size} color={color} />
-          ),
         }}
       />
       <Tab.Screen
         name="Timetable"
         component={TimetableScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="calendar-week" size={size} color={color} />
-          ),
-        }}
       />
       <Tab.Screen
         name="Subjects"
         component={SubjectsScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="book-multiple" size={size} color={color} />
-          ),
-        }}
       />
       <Tab.Screen
         name="Calendar"
         component={CalendarScreen}
         options={{
           title: 'Past Records',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="calendar-edit" size={size} color={color} />
-          ),
         }}
       />
       <Tab.Screen
         name="Analytics"
         component={AnalyticsScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="chart-box" size={size} color={color} />
-          ),
-        }}
       />
     </Tab.Navigator>
   );
 }
 
-export default function App() {
+function AppContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isOnboarded, setIsOnboarded] = useState(false);
+  const { theme, isDark } = useThemeContext();
 
   useEffect(() => {
     checkOnboarding();
@@ -105,24 +89,34 @@ export default function App() {
     } catch (e) {
       console.error('Failed to check onboarding', e);
     } finally {
-      setIsLoading(false);
+      // Simulate slightly longer loading for aesthetic splash fade-out (e.g. 1.2s total)
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 1200);
     }
   };
 
   if (isLoading) {
-    return null; // Or a loading screen
+    return (
+      <SafeAreaProvider>
+        <PaperProvider theme={theme}>
+          <SplashLoader />
+        </PaperProvider>
+      </SafeAreaProvider>
+    );
   }
 
   return (
     <SafeAreaProvider>
       <PaperProvider theme={theme}>
-        <NavigationContainer>
-          <StatusBar style="light" backgroundColor={theme.colors.background} />
+        <NavigationContainer theme={theme}>
+          <StatusBar style={isDark ? "light" : "dark"} backgroundColor={theme.colors.background} />
           <Stack.Navigator
             initialRouteName={isOnboarded ? 'MainTabs' : 'Onboarding'}
             screenOptions={{
               headerShown: false,
-              cardStyle: { backgroundColor: theme.colors.background }
+              cardStyle: { backgroundColor: theme.colors.background },
+              cardStyleInterpolator: CardStyleInterpolators.forFadeFromCenter,
             }}
           >
             <Stack.Screen name="Onboarding" component={OnboardingScreen} />
@@ -133,3 +127,13 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
+}
+
+
