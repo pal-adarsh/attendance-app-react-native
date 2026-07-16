@@ -1,20 +1,21 @@
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, Button, useTheme } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { Text, Button, useTheme, IconButton } from 'react-native-paper';
 import { Calendar } from 'react-native-calendars';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import GradientCard from '../components/GradientCard';
 import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
 import { gradients, shadows } from '../constants/theme';
+import { toLocalDateString, getLocalDayName, isFutureLocalDate, isWeekendLocalDate, formatLocalDate } from '../utils/dateUtils';
 
 const CalendarScreen = () => {
     const theme = useTheme();
     const { isDark } = useThemeContext();
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState(toLocalDateString());
     const [subjects, setSubjects] = useState([]);
     const [timetable, setTimetable] = useState({});
     const [attendanceStatus, setAttendanceStatus] = useState({});
@@ -25,12 +26,6 @@ const CalendarScreen = () => {
         }, [])
     );
 
-    useFocusEffect(
-        useCallback(() => {
-            loadAttendanceForDate(selectedDate);
-        }, [selectedDate])
-    );
-
     const loadData = async () => {
         const [allSubjects, loadedTimetable] = await Promise.all([
             StorageService.loadSubjects(),
@@ -38,10 +33,16 @@ const CalendarScreen = () => {
         ]);
         setSubjects(allSubjects);
         setTimetable(loadedTimetable);
+        const records = await StorageService.getRecordsByDate(selectedDate);
+        applyRecords(records);
     };
 
     const loadAttendanceForDate = async (date) => {
         const records = await StorageService.getRecordsByDate(date);
+        applyRecords(records);
+    };
+
+    const applyRecords = (records) => {
         const statusMap = {};
         records.forEach(record => {
             statusMap[record.subjectId] = record.status;
@@ -50,7 +51,7 @@ const CalendarScreen = () => {
     };
 
     const getSubjectsForDate = (date) => {
-        const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
+        const dayName = getLocalDayName(date);
         const subjectIds = timetable[dayName] || [];
         return subjects.filter(s => subjectIds.includes(s.id));
     };
@@ -65,18 +66,41 @@ const CalendarScreen = () => {
             [subjectId]: status
         }));
 
-        const { attended, total } = await StorageService.calculateSubjectTotals(subjectId);
-        const updatedSubjects = subjects.map(s =>
-            s.id === subjectId ? { ...s, attended, total } : s
-        );
-        await StorageService.saveSubjects(updatedSubjects);
+        const updatedSubjects = await StorageService.recomputeSubjectTotals(subjectId);
         setSubjects(updatedSubjects);
     };
 
+    const clearAttendance = (subjectId) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        Alert.alert(
+            'Clear attendance for this day?',
+            '',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Clear',
+                    style: 'destructive',
+                    onPress: async () => {
+                        await StorageService.removeAttendanceRecord(selectedDate, subjectId);
+
+                        setAttendanceStatus(prev => {
+                            const next = { ...prev };
+                            delete next[subjectId];
+                            return next;
+                        });
+
+                        const updatedSubjects = await StorageService.recomputeSubjectTotals(subjectId);
+                        setSubjects(updatedSubjects);
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    },
+                },
+            ]
+        );
+    };
+
     const dateSubjects = getSubjectsForDate(selectedDate);
-    const selectedDateObj = new Date(selectedDate);
-    const isWeekend = selectedDateObj.getDay() === 0 || selectedDateObj.getDay() === 6;
-    const isFuture = selectedDateObj > new Date();
+    const isFuture = isFutureLocalDate(selectedDate);
+    const isWeekend = isWeekendLocalDate(selectedDate);
 
     const backgroundGradient = isDark ? gradients.darkBackground : gradients.lightBackground;
     const cardGradient = isDark ? gradients.darkCard : gradients.lightCard;
@@ -90,6 +114,7 @@ const CalendarScreen = () => {
                         current={selectedDate}
                         onDayPress={(day) => {
                             setSelectedDate(day.dateString);
+                            loadAttendanceForDate(day.dateString);
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         }}
                         markedDates={{
@@ -114,22 +139,17 @@ const CalendarScreen = () => {
                             textMonthFontWeight: 'bold',
                             textDayHeaderFontWeight: '600',
                         }}
-                        maxDate={new Date().toISOString().split('T')[0]}
+                        maxDate={toLocalDateString()}
                     />
                 </Animated.View>
 
-                <Animated.View 
+                <Animated.View
                     key={selectedDate}
                     entering={FadeInDown.duration(400)}
                     style={styles.content}
                 >
                     <Text variant="titleLarge" style={[styles.dateTitle, { color: theme.colors.text }]}>
-                        {selectedDateObj.toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                        })}
+                        {formatLocalDate(selectedDate)}
                     </Text>
 
                     {isFuture ? (
@@ -166,9 +186,37 @@ const CalendarScreen = () => {
                             return (
                                 <GradientCard key={subject.id} gradient={cardGradient} style={styles.subjectCard}>
                                     <View style={styles.subjectContent}>
-                                        <Text variant="titleMedium" style={[styles.subjectName, { color: theme.colors.text }]}>
-                                            {subject.name}
-                                        </Text>
+                                        <View style={styles.subjectHeader}>
+                                            <Text variant="titleMedium" style={[styles.subjectName, { color: theme.colors.text }]}>
+                                                {subject.name}
+                                            </Text>
+                                            {status && (
+                                                <View style={styles.headerActions}>
+                                                    <IconButton
+                                                        icon="close-circle-outline"
+                                                        size={22}
+                                                        onPress={() => clearAttendance(subject.id)}
+                                                        iconColor={theme.colors.onSurfaceVariant}
+                                                        accessibilityLabel="Clear attendance"
+                                                    />
+                                                    <Animated.View
+                                                        entering={ZoomIn.springify()}
+                                                        style={[
+                                                            styles.statusBadge,
+                                                            {
+                                                                backgroundColor: status === 'present'
+                                                                    ? theme.colors.attendanceGreen
+                                                                    : theme.colors.attendanceRed
+                                                            }
+                                                        ]}
+                                                    >
+                                                        <Text style={styles.statusText}>
+                                                            {status === 'present' ? '✓' : '✗'}
+                                                        </Text>
+                                                    </Animated.View>
+                                                </View>
+                                            )}
+                                        </View>
 
                                         <View style={styles.buttonContainer}>
                                             <LinearGradient
@@ -184,6 +232,7 @@ const CalendarScreen = () => {
                                                         status === 'present' ? { color: '#FFF' } : { color: theme.colors.onSurface }
                                                     ]}
                                                     buttonColor="transparent"
+                                                    accessibilityLabel="Mark present"
                                                 >
                                                     Present
                                                 </Button>
@@ -202,6 +251,7 @@ const CalendarScreen = () => {
                                                         status === 'absent' ? { color: '#FFF' } : { color: theme.colors.onSurface }
                                                     ]}
                                                     buttonColor="transparent"
+                                                    accessibilityLabel="Mark absent"
                                                 >
                                                     Absent
                                                 </Button>
@@ -239,9 +289,33 @@ const styles = StyleSheet.create({
     subjectContent: {
         padding: 16,
     },
-    subjectName: {
+    subjectHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: 12,
+    },
+    subjectName: {
         fontWeight: 'bold',
+        flex: 1,
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    statusBadge: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...shadows.small,
+    },
+    statusText: {
+        color: '#FFF',
+        fontWeight: 'bold',
+        fontSize: 16,
     },
     buttonContainer: {
         flexDirection: 'row',

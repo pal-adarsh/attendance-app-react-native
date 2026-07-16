@@ -32,6 +32,7 @@ const AnalyticsScreen = ({ navigation }) => {
                     icon="cog"
                     iconColor={theme.colors.text}
                     onPress={() => setSettingsVisible(true)}
+                    accessibilityLabel="Open settings"
                 />
             ),
         });
@@ -62,19 +63,12 @@ const AnalyticsScreen = ({ navigation }) => {
         }
     };
 
-    const statusColor = {
-        red: theme.colors.attendanceRed,
-        yellow: theme.colors.attendanceYellow,
-        green: theme.colors.attendanceGreen,
-    }[overallStats.status];
-
     const backgroundGradient = isDark ? gradients.darkBackground : gradients.lightBackground;
     const cardGradient = isDark ? gradients.darkCard : gradients.lightCard;
 
     return (
         <LinearGradient colors={backgroundGradient} style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
-                {/* Overall Summary */}
                 <Animated.View entering={FadeInDown.duration(600)}>
                     <LinearGradient
                         colors={getStatusGradient(overallStats.status)}
@@ -127,10 +121,9 @@ const AnalyticsScreen = ({ navigation }) => {
                     </LinearGradient>
                 </Animated.View>
 
-                {/* Subject-wise Breakdown */}
-                <Animated.Text 
+                <Animated.Text
                     entering={FadeInDown.delay(100).duration(500)}
-                    variant="titleLarge" 
+                    variant="titleLarge"
                     style={styles.sectionTitle}
                 >
                     Subject-wise Breakdown
@@ -181,7 +174,6 @@ const AnalyticsScreen = ({ navigation }) => {
                                             {subject.attended} / {subject.total} lectures
                                         </Text>
 
-                                        {/* Premium Animated Progress Bar */}
                                         <View style={styles.progressContainer}>
                                             <AnimatedProgressBar
                                                 progress={subject.total === 0 ? 0 : percentage / 100}
@@ -192,9 +184,21 @@ const AnalyticsScreen = ({ navigation }) => {
                                         </View>
 
                                         <View style={styles.insights}>
-                                            {status === 'red' ? (
+                                            {subject.total === 0 ? (
+                                                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, fontStyle: 'italic' }}>
+                                                    📝 No lectures logged yet
+                                                </Text>
+                                            ) : needed === Infinity ? (
+                                                <Text variant="bodySmall" style={{ color: theme.colors.attendanceRed, fontWeight: '600' }}>
+                                                    📚 Target unreachable at current rate
+                                                </Text>
+                                            ) : status === 'red' ? (
                                                 <Text variant="bodySmall" style={{ color: theme.colors.attendanceRed, fontWeight: '600' }}>
                                                     📚 Attend next {needed} lectures to reach {subject.target}%
+                                                </Text>
+                                            ) : skippable === Infinity ? (
+                                                <Text variant="bodySmall" style={{ color: theme.colors.attendanceGreen, fontWeight: '600' }}>
+                                                    ✨ No lectures to skip needed
                                                 </Text>
                                             ) : (
                                                 <Text variant="bodySmall" style={{ color: theme.colors.attendanceGreen, fontWeight: '600' }}>
@@ -326,4 +330,3 @@ const styles = StyleSheet.create({
 });
 
 export default AnalyticsScreen;
-

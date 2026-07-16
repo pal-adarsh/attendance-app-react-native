@@ -5,20 +5,21 @@ import { PaperProvider } from 'react-native-paper';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StorageService } from './src/utils/storage';
+import { StorageService, checkSchemaVersion, initializeStorage } from './src/utils/storage';
 import { ThemeProvider, useThemeContext } from './src/utils/ThemeContext';
 
-// Components
 import CustomTabBar from './src/components/CustomTabBar';
 import SplashLoader from './src/components/SplashLoader';
+import ErrorBoundary from './src/components/ErrorBoundary';
 
-// Screens
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import DailyAttendanceScreen from './src/screens/DailyAttendanceScreen';
 import TimetableScreen from './src/screens/TimetableScreen';
 import SubjectsScreen from './src/screens/SubjectsScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
 import AnalyticsScreen from './src/screens/AnalyticsScreen';
+import NotesHomeScreen from './src/screens/NotesHomeScreen';
+import NoteEditorScreen from './src/screens/NoteEditorScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -42,32 +43,12 @@ function MainTabs() {
         },
       }}
     >
-      <Tab.Screen
-        name="Today"
-        component={DailyAttendanceScreen}
-        options={{
-          title: 'Today',
-        }}
-      />
-      <Tab.Screen
-        name="Timetable"
-        component={TimetableScreen}
-      />
-      <Tab.Screen
-        name="Subjects"
-        component={SubjectsScreen}
-      />
-      <Tab.Screen
-        name="Calendar"
-        component={CalendarScreen}
-        options={{
-          title: 'Past Records',
-        }}
-      />
-      <Tab.Screen
-        name="Analytics"
-        component={AnalyticsScreen}
-      />
+      <Tab.Screen name="Today" component={DailyAttendanceScreen} options={{ title: 'Today' }} />
+      <Tab.Screen name="Timetable" component={TimetableScreen} />
+      <Tab.Screen name="Subjects" component={SubjectsScreen} />
+      <Tab.Screen name="Calendar" component={CalendarScreen} options={{ title: 'Past Records' }} />
+      <Tab.Screen name="Notes" component={NotesHomeScreen} options={{ title: 'Notes' }} />
+      <Tab.Screen name="Analytics" component={AnalyticsScreen} />
     </Tab.Navigator>
   );
 }
@@ -78,17 +59,18 @@ function AppContent() {
   const { theme, isDark } = useThemeContext();
 
   useEffect(() => {
-    checkOnboarding();
+    initialize();
   }, []);
 
-  const checkOnboarding = async () => {
+  const initialize = async () => {
     try {
+      await checkSchemaVersion();
+      await initializeStorage();
       const profile = await StorageService.loadStudentProfile();
       setIsOnboarded(profile.setupComplete);
     } catch (e) {
-      console.error('Failed to check onboarding', e);
+      console.error('Failed to initialize', e);
     } finally {
-      // Simulate slightly longer loading for aesthetic splash fade-out (e.g. 1.2s total)
       setTimeout(() => {
         setIsLoading(false);
       }, 1200);
@@ -99,7 +81,9 @@ function AppContent() {
     return (
       <SafeAreaProvider>
         <PaperProvider theme={theme}>
-          <SplashLoader />
+          <ErrorBoundary>
+            <SplashLoader />
+          </ErrorBoundary>
         </PaperProvider>
       </SafeAreaProvider>
     );
@@ -108,20 +92,29 @@ function AppContent() {
   return (
     <SafeAreaProvider>
       <PaperProvider theme={theme}>
-        <NavigationContainer theme={theme}>
-          <StatusBar style={isDark ? "light" : "dark"} backgroundColor={theme.colors.background} />
-          <Stack.Navigator
-            initialRouteName={isOnboarded ? 'MainTabs' : 'Onboarding'}
-            screenOptions={{
-              headerShown: false,
-              cardStyle: { backgroundColor: theme.colors.background },
-              cardStyleInterpolator: CardStyleInterpolators.forFadeFromCenter,
-            }}
-          >
-            <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-            <Stack.Screen name="MainTabs" component={MainTabs} />
-          </Stack.Navigator>
-        </NavigationContainer>
+        <ErrorBoundary>
+          <NavigationContainer theme={theme}>
+            <StatusBar style={isDark ? "light" : "dark"} backgroundColor={theme.colors.background} />
+            <Stack.Navigator
+              initialRouteName={isOnboarded ? 'MainTabs' : 'Onboarding'}
+              screenOptions={{
+                headerShown: false,
+                cardStyle: { backgroundColor: theme.colors.background },
+                cardStyleInterpolator: CardStyleInterpolators.forFadeFromCenter,
+              }}
+            >
+              <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+              <Stack.Screen name="MainTabs" component={MainTabs} />
+              <Stack.Screen
+                name="NoteEditor"
+                component={NoteEditorScreen}
+                options={{
+                  cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+                }}
+              />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </ErrorBoundary>
       </PaperProvider>
     </SafeAreaProvider>
   );
@@ -134,5 +127,3 @@ export default function App() {
     </ThemeProvider>
   );
 }
-
-

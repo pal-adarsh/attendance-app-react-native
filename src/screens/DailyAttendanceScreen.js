@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, Button, useTheme } from 'react-native-paper';
+import React, { useState, useCallback } from 'react';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { Text, Button, useTheme, IconButton } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
@@ -9,6 +9,7 @@ import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
 import { gradients, shadows } from '../constants/theme';
+import { toLocalDateString, getTodayDayName, formatLocalDate } from '../utils/dateUtils';
 
 const DailyAttendanceScreen = () => {
     const theme = useTheme();
@@ -34,12 +35,12 @@ const DailyAttendanceScreen = () => {
         setSubjects(allSubjects);
         setStudentName(profile.name);
 
-        const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+        const today = getTodayDayName();
         const todaySubjectIds = timetable[today] || [];
         const todaySubjectsList = allSubjects.filter(s => todaySubjectIds.includes(s.id));
         setTodaySubjects(todaySubjectsList);
 
-        const todayDate = new Date().toISOString().split('T')[0];
+        const todayDate = toLocalDateString();
         const records = await StorageService.getRecordsByDate(todayDate);
 
         const statusMap = {};
@@ -56,7 +57,7 @@ const DailyAttendanceScreen = () => {
                 : Haptics.ImpactFeedbackStyle.Medium
         );
 
-        const todayDate = new Date().toISOString().split('T')[0];
+        const todayDate = toLocalDateString();
         await StorageService.updateAttendanceRecord(todayDate, subjectId, status);
 
         setAttendanceStatus(prev => ({
@@ -64,21 +65,37 @@ const DailyAttendanceScreen = () => {
             [subjectId]: status
         }));
 
-        const { attended, total } = await StorageService.calculateSubjectTotals(subjectId);
-        const updatedSubjects = subjects.map(s =>
-            s.id === subjectId ? { ...s, attended, total } : s
-        );
-        await StorageService.saveSubjects(updatedSubjects);
+        const updatedSubjects = await StorageService.recomputeSubjectTotals(subjectId);
         setSubjects(updatedSubjects);
     };
 
-    const getTodayDate = () => {
-        return new Date().toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
+    const clearAttendance = (subjectId) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        Alert.alert(
+            'Clear attendance for this day?',
+            '',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Clear',
+                    style: 'destructive',
+                    onPress: async () => {
+                        const todayDate = toLocalDateString();
+                        await StorageService.removeAttendanceRecord(todayDate, subjectId);
+
+                        setAttendanceStatus(prev => {
+                            const next = { ...prev };
+                            delete next[subjectId];
+                            return next;
+                        });
+
+                        const updatedSubjects = await StorageService.recomputeSubjectTotals(subjectId);
+                        setSubjects(updatedSubjects);
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    },
+                },
+            ]
+        );
     };
 
     const isWeekend = () => {
@@ -96,19 +113,17 @@ const DailyAttendanceScreen = () => {
             style={styles.container}
         >
             <ScrollView contentContainerStyle={styles.scrollContent}>
-                {/* Header */}
                 <Animated.View entering={FadeInDown.duration(500)} style={styles.header}>
                     <View>
                         <Text variant="headlineMedium" style={[styles.greeting, { color: theme.colors.text }]}>
                             Hello, {studentName}! 👋
                         </Text>
                         <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
-                            {getTodayDate()}
+                            {formatLocalDate(toLocalDateString())}
                         </Text>
                     </View>
                 </Animated.View>
 
-                {/* Today's Lectures */}
                 {isWeekend() ? (
                     <Animated.View entering={FadeInDown.delay(150).duration(500)}>
                         <GradientCard gradient={cardGradient} style={styles.emptyCard}>
@@ -163,23 +178,34 @@ const DailyAttendanceScreen = () => {
                                                 <Text variant="titleLarge" style={[styles.lectureName, { color: theme.colors.text }]}>
                                                     {subject.name}
                                                 </Text>
-                                                {isMarked && (
-                                                    <Animated.View
-                                                        entering={ZoomIn.springify()}
-                                                        style={[
-                                                            styles.statusBadge,
-                                                            {
-                                                                backgroundColor: status === 'present'
-                                                                    ? theme.colors.attendanceGreen
-                                                                    : theme.colors.attendanceRed
-                                                            }
-                                                        ]}
-                                                    >
-                                                        <Text style={styles.statusText}>
-                                                            {status === 'present' ? '✓' : '✗'}
-                                                        </Text>
-                                                    </Animated.View>
-                                                )}
+                                                <View style={styles.headerActions}>
+                                                    {isMarked && (
+                                                        <IconButton
+                                                            icon="close-circle-outline"
+                                                            size={22}
+                                                            onPress={() => clearAttendance(subject.id)}
+                                                            iconColor={theme.colors.onSurfaceVariant}
+                                                            accessibilityLabel="Clear attendance"
+                                                        />
+                                                    )}
+                                                    {isMarked && (
+                                                        <Animated.View
+                                                            entering={ZoomIn.springify()}
+                                                            style={[
+                                                                styles.statusBadge,
+                                                                {
+                                                                    backgroundColor: status === 'present'
+                                                                        ? theme.colors.attendanceGreen
+                                                                        : theme.colors.attendanceRed
+                                                                }
+                                                            ]}
+                                                        >
+                                                            <Text style={styles.statusText}>
+                                                                {status === 'present' ? '✓' : '✗'}
+                                                            </Text>
+                                                        </Animated.View>
+                                                    )}
+                                                </View>
                                             </View>
 
                                             <View style={styles.buttonContainer}>
@@ -196,6 +222,7 @@ const DailyAttendanceScreen = () => {
                                                             status === 'present' ? { color: '#FFF' } : { color: theme.colors.onSurface }
                                                         ]}
                                                         buttonColor="transparent"
+                                                        accessibilityLabel="Mark present"
                                                     >
                                                         Present
                                                     </Button>
@@ -214,6 +241,7 @@ const DailyAttendanceScreen = () => {
                                                             status === 'absent' ? { color: '#FFF' } : { color: theme.colors.onSurface }
                                                         ]}
                                                         buttonColor="transparent"
+                                                        accessibilityLabel="Mark absent"
                                                     >
                                                         Absent
                                                     </Button>
@@ -280,6 +308,11 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         flex: 1,
     },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
     statusBadge: {
         width: 32,
         height: 32,
@@ -329,4 +362,3 @@ const styles = StyleSheet.create({
 });
 
 export default DailyAttendanceScreen;
-

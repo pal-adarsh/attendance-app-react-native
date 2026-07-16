@@ -88,6 +88,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
         else if (route.name === 'Timetable') iconName = 'calendar-week';
         else if (route.name === 'Subjects') iconName = 'book-multiple';
         else if (route.name === 'Calendar') iconName = 'calendar-edit';
+        else if (route.name === 'Notes') iconName = 'note-text-outline';
         else if (route.name === 'Analytics') iconName = 'chart-box';
 
         return (

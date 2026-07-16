@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet, FlatList, Alert } from 'react-native';
 import { FAB, useTheme, Text, IconButton } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -22,12 +22,12 @@ import { calculatePercentage, getStatus } from '../utils/attendance';
 
 const SubjectsScreen = () => {
     const theme = useTheme();
+    const navigation = useNavigation();
     const { isDark } = useThemeContext();
     const [subjects, setSubjects] = useState([]);
     const [modalVisible, setModalVisible] = useState(false);
     const [editingSubject, setEditingSubject] = useState(null);
-    
-    // FAB breathing animation
+
     const fabScale = useSharedValue(1);
 
     useEffect(() => {
@@ -54,11 +54,24 @@ const SubjectsScreen = () => {
 
     const handleSaveSubject = async (subject) => {
         let newSubjects;
-        if (editingSubject) {
-            newSubjects = subjects.map(s => s.id === subject.id ? subject : s);
+        const existingSubject = editingSubject ? subjects.find(s => s.id === subject.id) : null;
+
+        if (existingSubject) {
+            const baselineAttended = subject.baselineAttended ?? existingSubject.baselineAttended ?? 0;
+            const baselineTotal = subject.baselineTotal ?? existingSubject.baselineTotal ?? 0;
+            newSubjects = subjects.map(s =>
+                s.id === subject.id
+                    ? { ...subject, baselineAttended, baselineTotal }
+                    : s
+            );
         } else {
-            newSubjects = [...subjects, subject];
+            newSubjects = [...subjects, {
+                ...subject,
+                baselineAttended: subject.baselineAttended ?? subject.attended ?? 0,
+                baselineTotal: subject.baselineTotal ?? subject.total ?? 0,
+            }];
         }
+
         setSubjects(newSubjects);
         await StorageService.saveSubjects(newSubjects);
         setEditingSubject(null);
@@ -69,16 +82,38 @@ const SubjectsScreen = () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         Alert.alert(
             'Delete Subject',
-            'Are you sure you want to delete this subject?',
+            'Are you sure you want to delete this subject? Its attendance records and timetable slots will also be removed.',
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
                     text: 'Delete',
                     style: 'destructive',
                     onPress: async () => {
-                        const newSubjects = subjects.filter(s => s.id !== id);
+                        const newSubjects = await StorageService.deleteSubjectCascade(id);
                         setSubjects(newSubjects);
-                        await StorageService.saveSubjects(newSubjects);
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    },
+                },
+            ]
+        );
+    };
+
+    const clearSubjectHistory = (id) => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        Alert.alert(
+            'Clear History',
+            'Remove all attendance records for this subject? This cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Clear',
+                    style: 'destructive',
+                    onPress: async () => {
+                        const records = await StorageService.loadAttendanceRecords();
+                        const newRecords = records.filter(r => r.subjectId !== id);
+                        await StorageService.saveAttendanceRecords(newRecords);
+                        const updatedSubjects = await StorageService.recomputeSubjectTotals(id);
+                        setSubjects(updatedSubjects);
                         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     },
                 },
@@ -154,17 +189,32 @@ const SubjectsScreen = () => {
                                                     size={20}
                                                     onPress={() => openEditModal(item)}
                                                     iconColor={theme.colors.primary}
+                                                    accessibilityLabel="Edit subject"
+                                                />
+                                                <IconButton
+                                                    icon="note-text-outline"
+                                                    size={20}
+                                                    onPress={() => navigation.navigate('NoteEditor', { subjectId: item.id })}
+                                                    iconColor={theme.colors.onSurfaceVariant}
+                                                    accessibilityLabel="Subject notes"
+                                                />
+                                                <IconButton
+                                                    icon="history"
+                                                    size={20}
+                                                    onPress={() => clearSubjectHistory(item.id)}
+                                                    iconColor={theme.colors.onSurfaceVariant}
+                                                    accessibilityLabel="Clear history"
                                                 />
                                                 <IconButton
                                                     icon="delete"
                                                     size={20}
                                                     onPress={() => deleteSubject(item.id)}
                                                     iconColor={theme.colors.error}
+                                                    accessibilityLabel="Delete subject"
                                                 />
                                             </View>
                                         </View>
 
-                                        {/* Premium Animated Progress Bar */}
                                         <View style={styles.progressContainer}>
                                             <AnimatedProgressBar
                                                 progress={item.total === 0 ? 0 : percentage / 100}
@@ -295,4 +345,3 @@ const styles = StyleSheet.create({
 });
 
 export default SubjectsScreen;
-

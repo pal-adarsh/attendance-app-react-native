@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { Modal, Portal, Text, TextInput, Button, HelperText, useTheme } from 'react-native-paper';
 import Animated, {
   useSharedValue,
@@ -23,13 +23,11 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
   const [lecturesPerWeek, setLecturesPerWeek] = useState('0');
   const [error, setError] = useState('');
 
-  // Animation values
   const translateY = useSharedValue(150);
   const scale = useSharedValue(0.95);
   const opacity = useSharedValue(0);
   const shakeX = useSharedValue(0);
 
-  // Input Focus Animations
   const nameFocus = useSharedValue(0);
   const attendedFocus = useSharedValue(0);
   const totalFocus = useSharedValue(0);
@@ -89,16 +87,25 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
       return;
     }
 
-    const attendedNum = parseInt(attended) || 0;
-    const totalNum = parseInt(total) || 0;
-    const targetNum = parseInt(target) || 75;
-    const lecturesPerWeekNum = parseInt(lecturesPerWeek) || 0;
+    let attendedNum = parseInt(attended) || 0;
+    let totalNum = parseInt(total) || 0;
+    let targetNum = parseInt(target) || 75;
+    let lecturesPerWeekNum = parseInt(lecturesPerWeek) || 0;
+
+    // Input clamping
+    targetNum = Math.max(1, Math.min(targetNum, 100));
+    lecturesPerWeekNum = Math.max(0, Math.min(lecturesPerWeekNum, 50));
+    attendedNum = Math.max(0, attendedNum);
+    totalNum = Math.max(0, totalNum);
 
     if (attendedNum > totalNum) {
       setError('Attended lectures cannot exceed total');
       triggerShake();
       return;
     }
+
+    const baselineAttended = editingSubject ? (editingSubject.baselineAttended ?? 0) : 0;
+    const baselineTotal = editingSubject ? (editingSubject.baselineTotal ?? 0) : 0;
 
     onSave({
       id: editingSubject ? editingSubject.id : Date.now().toString(),
@@ -107,13 +114,14 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
       total: totalNum,
       target: targetNum,
       lecturesPerWeek: lecturesPerWeekNum,
+      baselineAttended,
+      baselineTotal,
     });
 
     resetForm();
     onDismiss();
   };
 
-  // Animated styles
   const animatedModalStyle = useAnimatedStyle(() => {
     return {
       opacity: opacity.value,
@@ -159,7 +167,6 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
                 {editingSubject ? '✍️ Edit Subject' : '📚 Add New Subject'}
               </Text>
 
-              {/* Subject Name Input Container */}
               <Animated.View style={[styles.inputWrapper, { backgroundColor: inputBgColor }, getFocusStyle(nameFocus)]}>
                 <TextInput
                   label="Subject Name"
@@ -180,8 +187,6 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
                 />
               </Animated.View>
 
-
-              {/* Row: Attended & Total */}
               <View style={styles.row}>
                 <Animated.View style={[styles.inputWrapper, styles.halfInput, { backgroundColor: inputBgColor }, getFocusStyle(attendedFocus)]}>
                   <TextInput
@@ -223,7 +228,6 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
                 </Animated.View>
               </View>
 
-              {/* Row: Target % & Lectures/Week */}
               <View style={styles.row}>
                 <Animated.View style={[styles.inputWrapper, styles.halfInput, { backgroundColor: inputBgColor }, getFocusStyle(targetFocus)]}>
                   <TextInput
@@ -265,6 +269,12 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
                 </Animated.View>
               </View>
 
+              {editingSubject && (
+                <Text variant="bodySmall" style={[styles.hint, { color: theme.colors.onSurfaceVariant }]}>
+                  Adjusts your starting count — today's marks still count separately
+                </Text>
+              )}
+
               {!!error && (
                 <HelperText type="error" style={[styles.errorText, { color: theme.colors.error }]}>
                   {error}
@@ -280,7 +290,7 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
                 >
                   Cancel
                 </Button>
-                
+
                 <LinearGradient
                   colors={gradients.primary}
                   start={{ x: 0, y: 0 }}
@@ -356,6 +366,11 @@ const styles = StyleSheet.create({
   },
   halfInput: {
     flex: 1,
+  },
+  hint: {
+    textAlign: 'center',
+    marginBottom: 12,
+    fontStyle: 'italic',
   },
   errorText: {
     color: appTheme.colors.error,
