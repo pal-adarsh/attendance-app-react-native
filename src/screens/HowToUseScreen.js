@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, Image } from 'react-native';
 import { Text, useTheme, IconButton, Divider } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeContext } from '../utils/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { gradients } from '../constants/theme';
 
 const sections = [
@@ -57,11 +58,12 @@ const sections = [
 const HowToUseScreen = ({ navigation }) => {
     const theme = useTheme();
     const { isDark } = useThemeContext();
+    const insets = useSafeAreaInsets();
 
     return (
         <LinearGradient
             colors={isDark ? gradients.darkGlass : gradients.lightGlass}
-            style={styles.container}
+            style={[styles.container, { paddingTop: insets.top }]}
         >
             <View style={styles.header}>
                 <IconButton
@@ -70,6 +72,7 @@ const HowToUseScreen = ({ navigation }) => {
                     onPress={() => navigation.goBack()}
                     accessibilityLabel="Go back"
                 />
+                <Image source={require('../../assets/icon.png')} style={styles.logo} />
                 <Text variant="headlineSmall" style={[styles.title, { color: theme.colors.text }]}>
                     How to Use the App
                 </Text>
@@ -100,7 +103,6 @@ const HowToUseScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingTop: Platform.OS === 'ios' ? 60 : 20,
     },
     header: {
         flexDirection: 'row',
@@ -139,6 +141,12 @@ const styles = StyleSheet.create({
     stepText: {
         flex: 1,
         lineHeight: 22,
+    },
+    logo: {
+        width: 28,
+        height: 28,
+        borderRadius: 6,
+        marginLeft: 4,
     },
 });
 

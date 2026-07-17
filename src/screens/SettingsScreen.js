@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Platform, Alert, Switch } from 'react-native';
+import { View, StyleSheet, ScrollView, Platform, Alert, Switch, Image, Linking, Pressable } from 'react-native';
 import { Text, TextInput, Button, HelperText, useTheme, IconButton } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import { isReminderEnabled, setReminderEnabled } from '../utils/notifications';
-import { gradients, shadows } from '../constants/theme';
+import { gradients } from '../constants/theme';
 
 const SettingsScreen = ({ navigation }) => {
   const theme = useTheme();
   const { isDark, toggleTheme } = useThemeContext();
+  const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -134,7 +136,7 @@ const SettingsScreen = ({ navigation }) => {
   return (
     <LinearGradient
       colors={isDark ? gradients.darkGlass : gradients.lightGlass}
-      style={styles.container}
+      style={[styles.container, { paddingTop: insets.top }]}
     >
       <View style={styles.header}>
         <IconButton
@@ -143,6 +145,7 @@ const SettingsScreen = ({ navigation }) => {
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
+        <Image source={require('../../assets/icon.png')} style={styles.logo} />
         <Text variant="headlineSmall" style={[styles.title, { color: theme.colors.text }]}>
           Settings
         </Text>
@@ -290,6 +293,78 @@ const SettingsScreen = ({ navigation }) => {
           )}
         </View>
 
+        {/* Privacy & Data */}
+        <View style={[styles.card, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+          <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.text }]}>
+            Privacy & Data
+          </Text>
+          <View style={styles.privacyRow}>
+            <Text style={styles.privacyIcon}>🔒</Text>
+            <View style={styles.privacyInfo}>
+              <Text variant="bodyMedium" style={{ color: theme.colors.text, fontWeight: '600' }}>
+                Your data stays on your device
+              </Text>
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4, lineHeight: 18 }}>
+                All attendance records, notes, and settings are stored locally using on-device storage. We do not collect, transmit, or share any personal information.
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.divider, { backgroundColor: theme.colors.surfaceVariant, marginVertical: 12 }]} />
+          <View style={styles.privacyRow}>
+            <Text style={styles.privacyIcon}>📁</Text>
+            <View style={styles.privacyInfo}>
+              <Text variant="bodyMedium" style={{ color: theme.colors.text, fontWeight: '600' }}>
+                Backup your own data
+              </Text>
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4, lineHeight: 18 }}>
+                Use Export above to create a JSON backup. No cloud sync is provided — you control your data.
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Know the Creator */}
+        <View style={[styles.card, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+          <View style={styles.creatorHeader}>
+            <Image source={require('../../assets/icon.png')} style={styles.creatorAvatar} />
+            <View style={styles.creatorInfo}>
+              <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.text }]}>
+                Know the Creator
+              </Text>
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}>
+                Adarsh Pal
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.divider, { backgroundColor: theme.colors.surfaceVariant, marginVertical: 12 }]} />
+          <View style={styles.creatorLinks}>
+            <Pressable style={styles.creatorLinkRow} onPress={() => Linking.openURL('https://github.com/pal-adarsh')} accessibilityLabel="GitHub profile">
+              <Text style={styles.creatorLinkIcon}>🐙</Text>
+              <View style={styles.creatorLinkContent}>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>GitHub</Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.text, fontWeight: '500' }} numberOfLines={1}>pal-adarsh</Text>
+              </View>
+              <IconButton icon="open-in-new" size={18} iconColor={theme.colors.onSurfaceVariant} />
+            </Pressable>
+            <Pressable style={styles.creatorLinkRow} onPress={() => Linking.openURL('mailto:adarsh.r.s.pal@gmail.com')} accessibilityLabel="Email">
+              <Text style={styles.creatorLinkIcon}>📧</Text>
+              <View style={styles.creatorLinkContent}>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>Email</Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.text, fontWeight: '500' }} numberOfLines={1}>adarsh.r.s.pal@gmail.com</Text>
+              </View>
+              <IconButton icon="open-in-new" size={18} iconColor={theme.colors.onSurfaceVariant} />
+            </Pressable>
+            <Pressable style={styles.creatorLinkRow} onPress={() => Linking.openURL('https://linkedin.com/in/adarsh-pal-11212b292')} accessibilityLabel="LinkedIn profile">
+              <Text style={styles.creatorLinkIcon}>💼</Text>
+              <View style={styles.creatorLinkContent}>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>LinkedIn</Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.text, fontWeight: '500' }} numberOfLines={1}>Adarsh Pal</Text>
+              </View>
+              <IconButton icon="open-in-new" size={18} iconColor={theme.colors.onSurfaceVariant} />
+            </Pressable>
+          </View>
+        </View>
+
         {/* Dangerous Actions */}
         <View style={[styles.card, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
           <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.error }]}>
@@ -318,7 +393,6 @@ const SettingsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 60 : 20,
   },
   header: {
     flexDirection: 'row',
@@ -396,6 +470,34 @@ const styles = StyleSheet.create({
   howToBtn: {
     borderRadius: 12,
     borderWidth: 1.5,
+  },
+  privacyRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  privacyIcon: { fontSize: 24, marginTop: 2 },
+  privacyInfo: { flex: 1 },
+  creatorHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+  },
+  creatorAvatar: {
+    width: 44, height: 44, borderRadius: 12,
+  },
+  creatorInfo: { flex: 1 },
+  creatorLinks: { gap: 4 },
+  creatorLinkRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 8, paddingHorizontal: 4,
+    borderRadius: 10,
+  },
+  creatorLinkIcon: { fontSize: 20, marginRight: 10 },
+  creatorLinkContent: { flex: 1 },
+  logo: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    marginLeft: 4,
   },
 });
 

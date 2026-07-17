@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { getTodayDayName } from './dateUtils';
 
 export const REMINDER_ENABLED_KEY = '@attendance_reminder_enabled';
 export const REMINDER_HOUR_1 = 17;
@@ -8,12 +9,28 @@ export const REMINDER_MINUTE_1 = 0;
 export const REMINDER_HOUR_2 = 22;
 export const REMINDER_MINUTE_2 = 0;
 
+const hasLecturesToday = async () => {
+    try {
+        const raw = await AsyncStorage.getItem('@attendance_timetable');
+        if (!raw) return false;
+        const timetable = JSON.parse(raw);
+        const today = getTodayDayName();
+        const daySubjects = timetable[today];
+        return Array.isArray(daySubjects) && daySubjects.length > 0;
+    } catch (e) {
+        return true;
+    }
+};
+
 Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-    }),
+    handleNotification: async () => {
+        const todayHasLectures = await hasLecturesToday();
+        return {
+            shouldShowAlert: todayHasLectures,
+            shouldPlaySound: todayHasLectures,
+            shouldSetBadge: false,
+        };
+    },
 });
 
 const requestPermissions = async () => {

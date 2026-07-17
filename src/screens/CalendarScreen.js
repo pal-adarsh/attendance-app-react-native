@@ -1,15 +1,15 @@
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Pressable } from 'react-native';
 import { Text, Button, useTheme, IconButton } from 'react-native-paper';
-import { Calendar } from 'react-native-calendars';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
-import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
+import Animated, { FadeInDown, ZoomIn, useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import GradientCard from '../components/GradientCard';
 import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
 import { gradients, shadows } from '../constants/theme';
+import { Calendar } from 'react-native-calendars';
 import { toLocalDateString, getLocalDayName, isFutureLocalDate, isWeekendLocalDate, formatLocalDate } from '../utils/dateUtils';
 
 const CalendarScreen = () => {
@@ -118,6 +118,22 @@ const CalendarScreen = () => {
     const isFuture = isFutureLocalDate(selectedDate);
     const isWeekend = isWeekendLocalDate(selectedDate);
 
+    const AnimatedPressable = ({ children, onPress, style: extStyle }) => {
+        const scale = useSharedValue(1);
+        const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+        return (
+            <Pressable
+                onPress={onPress}
+                onPressIn={() => { scale.value = withSpring(0.96); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                onPressOut={() => { scale.value = withSpring(1); }}
+            >
+                <Animated.View style={[animStyle, extStyle]}>
+                    {children}
+                </Animated.View>
+            </Pressable>
+        );
+    };
+
     const backgroundGradient = isDark ? gradients.darkBackground : gradients.lightBackground;
     const cardGradient = isDark ? gradients.darkCard : gradients.lightCard;
     const defaultButtonColors = isDark ? ['#2C2C2C', '#2C2C2C'] : ['#E2E8F0', '#E2E8F0'];
@@ -143,17 +159,23 @@ const CalendarScreen = () => {
                         theme={{
                             backgroundColor: 'transparent',
                             calendarBackground: 'transparent',
-                            textSectionTitleColor: isDark ? '#FFF' : '#475569',
+                            textSectionTitleColor: isDark ? '#E2E8F0' : '#1E293B',
+                            textSectionTitleDisabledColor: isDark ? '#666' : '#94A3B8',
                             selectedDayBackgroundColor: theme.colors.primary,
                             selectedDayTextColor: '#FFF',
+                            todayBackgroundColor: isDark ? 'rgba(187,134,252,0.15)' : 'rgba(109,40,217,0.1)',
                             todayTextColor: theme.colors.primary,
-                            dayTextColor: isDark ? '#FFF' : '#0F172A',
-                            textDisabledColor: isDark ? '#666' : '#94A3B8',
-                            monthTextColor: isDark ? '#FFF' : '#0F172A',
+                            dayTextColor: isDark ? '#E2E8F0' : '#1E293B',
+                            textDisabledColor: isDark ? '#444' : '#CBD5E1',
+                            monthTextColor: isDark ? '#E2E8F0' : '#1E293B',
                             arrowColor: theme.colors.primary,
+                            disabledArrowColor: isDark ? '#444' : '#CBD5E1',
                             textDayFontWeight: '500',
                             textMonthFontWeight: 'bold',
                             textDayHeaderFontWeight: '600',
+                            textDayFontSize: 15,
+                            textMonthFontSize: 17,
+                            textDayHeaderFontSize: 13,
                         }}
                         maxDate={toLocalDateString()}
                     />
@@ -235,43 +257,47 @@ const CalendarScreen = () => {
                                         </View>
 
                                         <View style={styles.buttonContainer}>
-                                            <LinearGradient
-                                                colors={status === 'present' ? gradients.success : defaultButtonColors}
-                                                style={[styles.buttonGradient, shadows.small]}
-                                            >
-                                                <Button
-                                                    mode={status === 'present' ? 'contained' : 'outlined'}
-                                                    onPress={() => markAttendance(subject.id, 'present')}
-                                                    style={styles.button}
-                                                    labelStyle={[
-                                                        styles.buttonLabel,
-                                                        status === 'present' ? { color: '#FFF' } : { color: theme.colors.onSurface }
-                                                    ]}
-                                                    buttonColor="transparent"
-                                                    accessibilityLabel="Mark present"
+                                            <AnimatedPressable style={styles.buttonFlex}>
+                                                <LinearGradient
+                                                    colors={status === 'present' ? gradients.success : defaultButtonColors}
+                                                    style={[styles.buttonGradient, shadows.small]}
                                                 >
-                                                    Present
-                                                </Button>
-                                            </LinearGradient>
+                                                    <Button
+                                                        mode={status === 'present' ? 'contained' : 'outlined'}
+                                                        onPress={() => markAttendance(subject.id, 'present')}
+                                                        style={styles.button}
+                                                        labelStyle={[
+                                                            styles.buttonLabel,
+                                                            status === 'present' ? { color: '#FFF' } : { color: theme.colors.onSurface }
+                                                        ]}
+                                                        buttonColor="transparent"
+                                                        accessibilityLabel="Mark present"
+                                                    >
+                                                        Present
+                                                    </Button>
+                                                </LinearGradient>
+                                            </AnimatedPressable>
 
-                                            <LinearGradient
-                                                colors={status === 'absent' ? gradients.danger : defaultButtonColors}
-                                                style={[styles.buttonGradient, shadows.small]}
-                                            >
-                                                <Button
-                                                    mode={status === 'absent' ? 'contained' : 'outlined'}
-                                                    onPress={() => markAttendance(subject.id, 'absent')}
-                                                    style={styles.button}
-                                                    labelStyle={[
-                                                        styles.buttonLabel,
-                                                        status === 'absent' ? { color: '#FFF' } : { color: theme.colors.onSurface }
-                                                    ]}
-                                                    buttonColor="transparent"
-                                                    accessibilityLabel="Mark absent"
+                                            <AnimatedPressable style={styles.buttonFlex}>
+                                                <LinearGradient
+                                                    colors={status === 'absent' ? gradients.danger : defaultButtonColors}
+                                                    style={[styles.buttonGradient, shadows.small]}
                                                 >
-                                                    Absent
-                                                </Button>
-                                            </LinearGradient>
+                                                    <Button
+                                                        mode={status === 'absent' ? 'contained' : 'outlined'}
+                                                        onPress={() => markAttendance(subject.id, 'absent')}
+                                                        style={styles.button}
+                                                        labelStyle={[
+                                                            styles.buttonLabel,
+                                                            status === 'absent' ? { color: '#FFF' } : { color: theme.colors.onSurface }
+                                                        ]}
+                                                        buttonColor="transparent"
+                                                        accessibilityLabel="Mark absent"
+                                                    >
+                                                        Absent
+                                                    </Button>
+                                                </LinearGradient>
+                                            </AnimatedPressable>
                                         </View>
                                     </View>
                                 </GradientCard>
@@ -336,7 +362,9 @@ const styles = StyleSheet.create({
     buttonContainer: {
         flexDirection: 'row',
         gap: 12,
+        marginTop: 8,
     },
+    buttonFlex: { flex: 1 },
     buttonGradient: {
         flex: 1,
         borderRadius: 12,

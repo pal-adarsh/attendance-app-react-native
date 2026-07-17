@@ -7,6 +7,7 @@ import { Text, useTheme, IconButton, Chip, TextInput, Button, Portal, Modal } fr
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
@@ -199,6 +200,7 @@ const NoteEditorScreen = ({ route, navigation }) => {
         ? (Date.now() - new Date(lastSavedAt).getTime() < 60000 ? 'just now' : `${Math.floor((Date.now() - new Date(lastSavedAt).getTime()) / 60000)}m ago`)
         : '';
 
+    const insets = useSafeAreaInsets();
     const backgroundGradient = isDark ? gradients.darkBackground : gradients.lightBackground;
     const inputBgColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)';
 
@@ -209,7 +211,7 @@ const NoteEditorScreen = ({ route, navigation }) => {
         >
             <LinearGradient colors={backgroundGradient} style={styles.container}>
                 {/* Header */}
-                <View style={[styles.headerBar, { borderBottomColor: theme.colors.surfaceVariant }]}>
+                <View style={[styles.headerBar, { borderBottomColor: theme.colors.surfaceVariant, paddingTop: insets.top + 4 }]}>
                     <View style={styles.headerLeft}>
                         <IconButton
                             icon="arrow-left"

@@ -1,15 +1,16 @@
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Pressable } from 'react-native';
 import { Text, Button, useTheme, IconButton } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
-import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
+import Animated, { FadeInDown, ZoomIn, useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import GradientCard from '../components/GradientCard';
 import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
 import { gradients, shadows } from '../constants/theme';
 import { toLocalDateString, getTodayDayName, formatLocalDate } from '../utils/dateUtils';
+import { calculatePercentage } from '../utils/attendance';
 
 const DailyAttendanceScreen = () => {
     const theme = useTheme();
@@ -115,6 +116,23 @@ const DailyAttendanceScreen = () => {
         return day === 0 || day === 6;
     };
 
+    const AnimatedPressable = ({ children, onPress, style: extStyle, ...props }) => {
+        const scale = useSharedValue(1);
+        const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+        return (
+            <Pressable
+                onPress={onPress}
+                onPressIn={() => { scale.value = withSpring(0.96); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                onPressOut={() => { scale.value = withSpring(1); }}
+                {...props}
+            >
+                <Animated.View style={[animStyle, extStyle]}>
+                    {children}
+                </Animated.View>
+            </Pressable>
+        );
+    };
+
     const backgroundGradient = isDark ? gradients.darkBackground : gradients.lightBackground;
     const cardGradient = isDark ? gradients.darkCard : gradients.lightCard;
     const defaultButtonColors = isDark ? ['#2C2C2C', '#2C2C2C'] : ['#E2E8F0', '#E2E8F0'];
@@ -135,6 +153,65 @@ const DailyAttendanceScreen = () => {
                         </Text>
                     </View>
                 </Animated.View>
+
+                {/* Summary card */}
+                {!isWeekend() && todaySubjects.length > 0 && (
+                    <Animated.View entering={FadeInDown.delay(80).duration(500)} style={styles.summaryCard}>
+                        <LinearGradient
+                            colors={isDark ? gradients.darkCard : gradients.lightCard}
+                            style={styles.summaryGradient}
+                        >
+                            <View style={styles.summaryHeader}>
+                                <Text variant="titleMedium" style={[styles.summaryTitle, { color: theme.colors.text }]}>
+                                    Today's Progress
+                                </Text>
+                                <View style={[styles.summaryBadge, { backgroundColor: theme.colors.primary }]}>
+                                    <Text style={styles.summaryBadgeText}>
+                                        {Object.keys(attendanceStatus).length}/{todaySubjects.length}
+                                    </Text>
+                                </View>
+                            </View>
+                            <View style={styles.summaryBar}>
+                                <View style={[styles.summaryBarTrack, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]}>
+                                    <View style={[styles.summaryBarFill, { width: `${todaySubjects.length > 0 ? (Object.keys(attendanceStatus).length / todaySubjects.length) * 100 : 0}%`, backgroundColor: theme.colors.primary }]} />
+                                </View>
+                            </View>
+                            <View style={styles.summaryStats}>
+                                <View style={styles.summaryStat}>
+                                    <Text style={[styles.summaryStatValue, { color: theme.colors.attendanceGreen }]}>
+                                        {Object.values(attendanceStatus).filter(s => s === 'present').length}
+                                    </Text>
+                                    <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>Present</Text>
+                                </View>
+                                <View style={styles.summaryStat}>
+                                    <Text style={[styles.summaryStatValue, { color: theme.colors.attendanceRed }]}>
+                                        {Object.values(attendanceStatus).filter(s => s === 'absent').length}
+                                    </Text>
+                                    <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>Absent</Text>
+                                </View>
+                                <View style={styles.summaryStat}>
+                                    <Text style={[styles.summaryStatValue, { color: theme.colors.text }]}>
+                                        {todaySubjects.length - Object.keys(attendanceStatus).length}
+                                    </Text>
+                                    <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>Pending</Text>
+                                </View>
+                                {subjects.length > 0 && (() => {
+                                    const totalAttended = subjects.reduce((sum, s) => sum + (s.attended || 0), 0);
+                                    const totalLectures = subjects.reduce((sum, s) => sum + (s.total || 0), 0);
+                                    const overallPct = calculatePercentage(totalAttended, totalLectures);
+                                    return (
+                                        <View style={styles.summaryStat}>
+                                            <Text style={[styles.summaryStatValue, { color: theme.colors.primary }]}>
+                                                {overallPct.toFixed(0)}%
+                                            </Text>
+                                            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>Overall</Text>
+                                        </View>
+                                    );
+                                })()}
+                            </View>
+                        </LinearGradient>
+                    </Animated.View>
+                )}
 
                 {isWeekend() ? (
                     <Animated.View entering={FadeInDown.delay(150).duration(500)}>
@@ -221,43 +298,47 @@ const DailyAttendanceScreen = () => {
                                             </View>
 
                                             <View style={styles.buttonContainer}>
-                                                <LinearGradient
-                                                    colors={status === 'present' ? gradients.success : defaultButtonColors}
-                                                    style={[styles.buttonGradient, shadows.small]}
-                                                >
-                                                    <Button
-                                                        mode={status === 'present' ? 'contained' : 'outlined'}
-                                                        onPress={() => markAttendance(subject.id, 'present')}
-                                                        style={styles.button}
-                                                        labelStyle={[
-                                                            styles.buttonLabel,
-                                                            status === 'present' ? { color: '#FFF' } : { color: theme.colors.onSurface }
-                                                        ]}
-                                                        buttonColor="transparent"
-                                                        accessibilityLabel="Mark present"
+                                                <AnimatedPressable style={styles.buttonFlex}>
+                                                    <LinearGradient
+                                                        colors={status === 'present' ? gradients.success : defaultButtonColors}
+                                                        style={[styles.buttonGradient, shadows.small]}
                                                     >
-                                                        Present
-                                                    </Button>
-                                                </LinearGradient>
+                                                        <Button
+                                                            mode={status === 'present' ? 'contained' : 'outlined'}
+                                                            onPress={() => markAttendance(subject.id, 'present')}
+                                                            style={styles.button}
+                                                            labelStyle={[
+                                                                styles.buttonLabel,
+                                                                status === 'present' ? { color: '#FFF' } : { color: theme.colors.onSurface }
+                                                            ]}
+                                                            buttonColor="transparent"
+                                                            accessibilityLabel="Mark present"
+                                                        >
+                                                            Present
+                                                        </Button>
+                                                    </LinearGradient>
+                                                </AnimatedPressable>
 
-                                                <LinearGradient
-                                                    colors={status === 'absent' ? gradients.danger : defaultButtonColors}
-                                                    style={[styles.buttonGradient, shadows.small]}
-                                                >
-                                                    <Button
-                                                        mode={status === 'absent' ? 'contained' : 'outlined'}
-                                                        onPress={() => markAttendance(subject.id, 'absent')}
-                                                        style={styles.button}
-                                                        labelStyle={[
-                                                            styles.buttonLabel,
-                                                            status === 'absent' ? { color: '#FFF' } : { color: theme.colors.onSurface }
-                                                        ]}
-                                                        buttonColor="transparent"
-                                                        accessibilityLabel="Mark absent"
+                                                <AnimatedPressable style={styles.buttonFlex}>
+                                                    <LinearGradient
+                                                        colors={status === 'absent' ? gradients.danger : defaultButtonColors}
+                                                        style={[styles.buttonGradient, shadows.small]}
                                                     >
-                                                        Absent
-                                                    </Button>
-                                                </LinearGradient>
+                                                        <Button
+                                                            mode={status === 'absent' ? 'contained' : 'outlined'}
+                                                            onPress={() => markAttendance(subject.id, 'absent')}
+                                                            style={styles.button}
+                                                            labelStyle={[
+                                                                styles.buttonLabel,
+                                                                status === 'absent' ? { color: '#FFF' } : { color: theme.colors.onSurface }
+                                                            ]}
+                                                            buttonColor="transparent"
+                                                            accessibilityLabel="Mark absent"
+                                                        >
+                                                            Absent
+                                                        </Button>
+                                                    </LinearGradient>
+                                                </AnimatedPressable>
                                             </View>
                                         </View>
                                     </GradientCard>
@@ -282,6 +363,58 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     greeting: {
+        fontWeight: 'bold',
+    },
+    summaryCard: {
+        marginBottom: 20,
+        borderRadius: 16,
+        overflow: 'hidden',
+        ...shadows.medium,
+    },
+    summaryGradient: {
+        padding: 16,
+        borderRadius: 16,
+    },
+    summaryHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
+    summaryTitle: {
+        fontWeight: 'bold',
+    },
+    summaryBadge: {
+        borderRadius: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+    },
+    summaryBadgeText: {
+        color: '#FFF',
+        fontWeight: 'bold',
+        fontSize: 13,
+    },
+    summaryBar: {
+        marginBottom: 16,
+    },
+    summaryBarTrack: {
+        height: 6,
+        borderRadius: 3,
+        overflow: 'hidden',
+    },
+    summaryBarFill: {
+        height: '100%',
+        borderRadius: 3,
+    },
+    summaryStats: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    summaryStat: {
+        alignItems: 'center',
+    },
+    summaryStatValue: {
+        fontSize: 20,
         fontWeight: 'bold',
     },
     sectionHeader: {
@@ -342,6 +475,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 12,
     },
+    buttonFlex: { flex: 1 },
     buttonGradient: {
         flex: 1,
         borderRadius: 12,
