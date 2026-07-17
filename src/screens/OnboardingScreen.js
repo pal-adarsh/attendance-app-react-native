@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
-import { gradients, shadows, theme as appTheme, animations } from '../constants/theme';
+import { gradients, shadows, animations } from '../constants/theme';
 
 const OnboardingScreen = ({ navigation }) => {
   const theme = useTheme();
@@ -66,17 +66,21 @@ const OnboardingScreen = ({ navigation }) => {
       return;
     }
 
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    await StorageService.saveStudentProfile({
-      name: name.trim(),
-      setupComplete: true
-    });
+      await StorageService.saveStudentProfile({
+        name: name.trim(),
+        setupComplete: true
+      });
 
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'MainTabs' }]
-    });
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs' }]
+      });
+    } catch (e) {
+      console.error('Failed to save profile', e);
+    }
   };
 
   // Animated Styles

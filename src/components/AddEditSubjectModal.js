@@ -11,7 +11,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useThemeContext } from '../utils/ThemeContext';
-import { gradients, theme as appTheme, animations, shadows } from '../constants/theme';
+import { gradients, animations, shadows } from '../constants/theme';
 
 const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => {
   const theme = useTheme();
@@ -373,7 +373,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   errorText: {
-    color: appTheme.colors.error,
     fontWeight: 'bold',
     textAlign: 'center',
     marginTop: -4,

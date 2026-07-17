@@ -48,34 +48,42 @@ const SubjectsScreen = () => {
     );
 
     const loadData = async () => {
-        const data = await StorageService.loadSubjects();
-        setSubjects(data);
+        try {
+            const data = await StorageService.loadSubjects();
+            setSubjects(data);
+        } catch (e) {
+            console.error('Failed to load subjects', e);
+        }
     };
 
     const handleSaveSubject = async (subject) => {
-        let newSubjects;
-        const existingSubject = editingSubject ? subjects.find(s => s.id === subject.id) : null;
+        try {
+            let newSubjects;
+            const existingSubject = editingSubject ? subjects.find(s => s.id === subject.id) : null;
 
-        if (existingSubject) {
-            const baselineAttended = subject.baselineAttended ?? existingSubject.baselineAttended ?? 0;
-            const baselineTotal = subject.baselineTotal ?? existingSubject.baselineTotal ?? 0;
-            newSubjects = subjects.map(s =>
-                s.id === subject.id
-                    ? { ...subject, baselineAttended, baselineTotal }
-                    : s
-            );
-        } else {
-            newSubjects = [...subjects, {
-                ...subject,
-                baselineAttended: subject.baselineAttended ?? subject.attended ?? 0,
-                baselineTotal: subject.baselineTotal ?? subject.total ?? 0,
-            }];
+            if (existingSubject) {
+                const baselineAttended = subject.baselineAttended ?? existingSubject.baselineAttended ?? 0;
+                const baselineTotal = subject.baselineTotal ?? existingSubject.baselineTotal ?? 0;
+                newSubjects = subjects.map(s =>
+                    s.id === subject.id
+                        ? { ...subject, baselineAttended, baselineTotal }
+                        : s
+                );
+            } else {
+                newSubjects = [...subjects, {
+                    ...subject,
+                    baselineAttended: subject.baselineAttended ?? subject.attended ?? 0,
+                    baselineTotal: subject.baselineTotal ?? subject.total ?? 0,
+                }];
+            }
+
+            setSubjects(newSubjects);
+            await StorageService.saveSubjects(newSubjects);
+            setEditingSubject(null);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } catch (e) {
+            console.error('Failed to save subject', e);
         }
-
-        setSubjects(newSubjects);
-        await StorageService.saveSubjects(newSubjects);
-        setEditingSubject(null);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     };
 
     const deleteSubject = (id) => {
@@ -89,9 +97,13 @@ const SubjectsScreen = () => {
                     text: 'Delete',
                     style: 'destructive',
                     onPress: async () => {
-                        const newSubjects = await StorageService.deleteSubjectCascade(id);
-                        setSubjects(newSubjects);
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        try {
+                            const newSubjects = await StorageService.deleteSubjectCascade(id);
+                            setSubjects(newSubjects);
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        } catch (e) {
+                            console.error('Failed to delete subject', e);
+                        }
                     },
                 },
             ]
@@ -109,12 +121,16 @@ const SubjectsScreen = () => {
                     text: 'Clear',
                     style: 'destructive',
                     onPress: async () => {
-                        const records = await StorageService.loadAttendanceRecords();
-                        const newRecords = records.filter(r => r.subjectId !== id);
-                        await StorageService.saveAttendanceRecords(newRecords);
-                        const updatedSubjects = await StorageService.recomputeSubjectTotals(id);
-                        setSubjects(updatedSubjects);
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        try {
+                            const records = await StorageService.loadAttendanceRecords();
+                            const newRecords = records.filter(r => r.subjectId !== id);
+                            await StorageService.saveAttendanceRecords(newRecords);
+                            const updatedSubjects = await StorageService.recomputeSubjectTotals(id);
+                            setSubjects(updatedSubjects);
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        } catch (e) {
+                            console.error('Failed to clear subject history', e);
+                        }
                     },
                 },
             ]
@@ -171,7 +187,7 @@ const SubjectsScreen = () => {
                                     <View style={styles.cardContent}>
                                         <View style={styles.header}>
                                             <View style={{ flex: 1 }}>
-                                                <Text variant="titleLarge" style={[styles.title, { color: theme.colors.text }]}>
+                                                <Text variant="titleLarge" style={[styles.title, { color: theme.colors.text }]} numberOfLines={1} ellipsizeMode="tail">
                                                     {item.name}
                                                 </Text>
                                                 <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
@@ -250,6 +266,7 @@ const SubjectsScreen = () => {
                         style={styles.fabButton}
                         color="#FFF"
                         onPress={openAddModal}
+                        accessibilityLabel="Add new subject"
                     />
                 </LinearGradient>
             </Animated.View>

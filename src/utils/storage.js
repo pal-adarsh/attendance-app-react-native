@@ -462,6 +462,51 @@ export const StorageService = {
         return notes.filter(n => n.subjectId === subjectId);
     },
 
+    // ========== EXPORT / IMPORT ==========
+
+    EXPORT_VERSION: 1,
+
+    async exportAllData() {
+        const [subjects, studentProfile, timetable, attendanceRecords, notes] = await Promise.all([
+            this.loadSubjects(),
+            this.loadStudentProfile(),
+            this.loadTimetable(),
+            this.loadAttendanceRecords(),
+            this.loadNotes(),
+        ]);
+        return {
+            version: this.EXPORT_VERSION,
+            exportedAt: new Date().toISOString(),
+            data: { subjects, studentProfile, timetable, attendanceRecords, notes },
+        };
+    },
+
+    async importAllData(backup) {
+        if (!backup || !backup.data) {
+            throw new Error('Invalid backup file: missing data object');
+        }
+        if (!backup.version || backup.version > this.EXPORT_VERSION) {
+            throw new Error('Unsupported backup version');
+        }
+        const { subjects, studentProfile, timetable, attendanceRecords, notes } = backup.data;
+
+        if (subjects !== undefined) {
+            await this.saveSubjects(subjects);
+        }
+        if (studentProfile !== undefined) {
+            await this.saveStudentProfile(studentProfile);
+        }
+        if (timetable !== undefined) {
+            await this.saveTimetable(timetable);
+        }
+        if (attendanceRecords !== undefined) {
+            await this.saveAttendanceRecords(attendanceRecords);
+        }
+        if (notes !== undefined) {
+            await this.saveNotes(notes);
+        }
+    },
+
     /**
      * Clear all data (for debugging/reset)
      */

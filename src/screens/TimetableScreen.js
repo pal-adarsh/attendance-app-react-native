@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, FlatList } from 'react-native';
 import { Text, Chip, useTheme } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,7 +8,7 @@ import GradientCard from '../components/GradientCard';
 import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
-import { gradients, shadows, theme as appTheme } from '../constants/theme';
+import { gradients, shadows } from '../constants/theme';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -26,29 +26,37 @@ const TimetableScreen = () => {
     );
 
     const loadData = async () => {
-        const [loadedSubjects, loadedTimetable] = await Promise.all([
-            StorageService.loadSubjects(),
-            StorageService.loadTimetable()
-        ]);
-        setSubjects(loadedSubjects);
-        setTimetable(loadedTimetable);
+        try {
+            const [loadedSubjects, loadedTimetable] = await Promise.all([
+                StorageService.loadSubjects(),
+                StorageService.loadTimetable()
+            ]);
+            setSubjects(loadedSubjects);
+            setTimetable(loadedTimetable);
+        } catch (e) {
+            console.error('Failed to load timetable data', e);
+        }
     };
 
     const toggleSubject = async (subjectId) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-        const daySubjects = timetable[selectedDay] || [];
-        const newDaySubjects = daySubjects.includes(subjectId)
-            ? daySubjects.filter(id => id !== subjectId)
-            : [...daySubjects, subjectId];
+            const daySubjects = timetable[selectedDay] || [];
+            const newDaySubjects = daySubjects.includes(subjectId)
+                ? daySubjects.filter(id => id !== subjectId)
+                : [...daySubjects, subjectId];
 
-        const newTimetable = {
-            ...timetable,
-            [selectedDay]: newDaySubjects
-        };
+            const newTimetable = {
+                ...timetable,
+                [selectedDay]: newDaySubjects
+            };
 
-        setTimetable(newTimetable);
-        await StorageService.saveTimetable(newTimetable);
+            setTimetable(newTimetable);
+            await StorageService.saveTimetable(newTimetable);
+        } catch (e) {
+            console.error('Failed to toggle subject', e);
+        }
     };
 
     const isSubjectSelected = (subjectId) => {

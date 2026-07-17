@@ -26,47 +26,55 @@ const DailyAttendanceScreen = () => {
     );
 
     const loadData = async () => {
-        const [allSubjects, timetable, profile] = await Promise.all([
-            StorageService.loadSubjects(),
-            StorageService.loadTimetable(),
-            StorageService.loadStudentProfile()
-        ]);
+        try {
+            const [allSubjects, timetable, profile] = await Promise.all([
+                StorageService.loadSubjects(),
+                StorageService.loadTimetable(),
+                StorageService.loadStudentProfile()
+            ]);
 
-        setSubjects(allSubjects);
-        setStudentName(profile.name);
+            setSubjects(allSubjects);
+            setStudentName(profile.name);
 
-        const today = getTodayDayName();
-        const todaySubjectIds = timetable[today] || [];
-        const todaySubjectsList = allSubjects.filter(s => todaySubjectIds.includes(s.id));
-        setTodaySubjects(todaySubjectsList);
+            const today = getTodayDayName();
+            const todaySubjectIds = timetable[today] || [];
+            const todaySubjectsList = allSubjects.filter(s => todaySubjectIds.includes(s.id));
+            setTodaySubjects(todaySubjectsList);
 
-        const todayDate = toLocalDateString();
-        const records = await StorageService.getRecordsByDate(todayDate);
+            const todayDate = toLocalDateString();
+            const records = await StorageService.getRecordsByDate(todayDate);
 
-        const statusMap = {};
-        records.forEach(record => {
-            statusMap[record.subjectId] = record.status;
-        });
-        setAttendanceStatus(statusMap);
+            const statusMap = {};
+            records.forEach(record => {
+                statusMap[record.subjectId] = record.status;
+            });
+            setAttendanceStatus(statusMap);
+        } catch (e) {
+            console.error('Failed to load today data', e);
+        }
     };
 
     const markAttendance = async (subjectId, status) => {
-        Haptics.impactAsync(
-            status === 'present'
-                ? Haptics.ImpactFeedbackStyle.Light
-                : Haptics.ImpactFeedbackStyle.Medium
-        );
+        try {
+            Haptics.impactAsync(
+                status === 'present'
+                    ? Haptics.ImpactFeedbackStyle.Light
+                    : Haptics.ImpactFeedbackStyle.Medium
+            );
 
-        const todayDate = toLocalDateString();
-        await StorageService.updateAttendanceRecord(todayDate, subjectId, status);
+            const todayDate = toLocalDateString();
+            await StorageService.updateAttendanceRecord(todayDate, subjectId, status);
 
-        setAttendanceStatus(prev => ({
-            ...prev,
-            [subjectId]: status
-        }));
+            setAttendanceStatus(prev => ({
+                ...prev,
+                [subjectId]: status
+            }));
 
-        const updatedSubjects = await StorageService.recomputeSubjectTotals(subjectId);
-        setSubjects(updatedSubjects);
+            const updatedSubjects = await StorageService.recomputeSubjectTotals(subjectId);
+            setSubjects(updatedSubjects);
+        } catch (e) {
+            console.error('Failed to mark attendance', e);
+        }
     };
 
     const clearAttendance = (subjectId) => {
@@ -80,18 +88,22 @@ const DailyAttendanceScreen = () => {
                     text: 'Clear',
                     style: 'destructive',
                     onPress: async () => {
-                        const todayDate = toLocalDateString();
-                        await StorageService.removeAttendanceRecord(todayDate, subjectId);
+                        try {
+                            const todayDate = toLocalDateString();
+                            await StorageService.removeAttendanceRecord(todayDate, subjectId);
 
-                        setAttendanceStatus(prev => {
-                            const next = { ...prev };
-                            delete next[subjectId];
-                            return next;
-                        });
+                            setAttendanceStatus(prev => {
+                                const next = { ...prev };
+                                delete next[subjectId];
+                                return next;
+                            });
 
-                        const updatedSubjects = await StorageService.recomputeSubjectTotals(subjectId);
-                        setSubjects(updatedSubjects);
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            const updatedSubjects = await StorageService.recomputeSubjectTotals(subjectId);
+                            setSubjects(updatedSubjects);
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        } catch (e) {
+                            console.error('Failed to clear attendance', e);
+                        }
                     },
                 },
             ]
@@ -175,7 +187,7 @@ const DailyAttendanceScreen = () => {
                                     <GradientCard gradient={cardGradient} style={styles.lectureCard}>
                                         <View style={styles.lectureContent}>
                                             <View style={styles.lectureHeader}>
-                                                <Text variant="titleLarge" style={[styles.lectureName, { color: theme.colors.text }]}>
+                                                <Text variant="titleLarge" style={[styles.lectureName, { color: theme.colors.text }]} numberOfLines={1} ellipsizeMode="tail">
                                                     {subject.name}
                                                 </Text>
                                                 <View style={styles.headerActions}>

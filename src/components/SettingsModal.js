@@ -8,10 +8,14 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import * as DocumentPicker from 'expo-document-picker';
 import * as Haptics from 'expo-haptics';
 import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
-import { gradients, theme as appTheme, animations, shadows } from '../constants/theme';
+import { isReminderEnabled, setReminderEnabled } from '../utils/notifications';
+import { gradients, animations, shadows } from '../constants/theme';
 
 const SettingsModal = ({ visible, onDismiss, navigation }) => {
   const theme = useTheme();
@@ -19,6 +23,10 @@ const SettingsModal = ({ visible, onDismiss, navigation }) => {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [backupMsg, setBackupMsg] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [remindersEnabled, setRemindersEnabledState] = useState(false);
 
   // Reanimated Modal Physics
   const translateY = useSharedValue(150);
@@ -44,8 +52,14 @@ const SettingsModal = ({ visible, onDismiss, navigation }) => {
   }, [visible]);
 
   const loadProfile = async () => {
-    const profile = await StorageService.loadStudentProfile();
-    setName(profile.name);
+    try {
+      const profile = await StorageService.loadStudentProfile();
+      setName(profile.name);
+      const enabled = await isReminderEnabled();
+      setRemindersEnabledState(enabled);
+    } catch (e) {
+      console.error('Failed to load profile', e);
+    }
   };
 
   const handleSaveName = async () => {
@@ -54,15 +68,19 @@ const SettingsModal = ({ visible, onDismiss, navigation }) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
-    await StorageService.saveStudentProfile({
-      name: name.trim(),
-      setupComplete: true,
-    });
-    setSuccess('Name updated successfully!');
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setTimeout(() => {
-      setSuccess('');
-    }, 2000);
+    try {
+      await StorageService.saveStudentProfile({
+        name: name.trim(),
+        setupComplete: true,
+      });
+      setSuccess('Name updated successfully!');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setTimeout(() => {
+        setSuccess('');
+      }, 2000);
+    } catch (e) {
+      console.error('Failed to save profile', e);
+    }
   };
 
   const handleResetData = () => {
@@ -76,18 +94,67 @@ const SettingsModal = ({ visible, onDismiss, navigation }) => {
           text: "Reset Everything",
           style: "destructive",
           onPress: async () => {
-            await StorageService.clearData();
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            onDismiss();
-            // Reset navigation tree back to onboarding
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Onboarding' }],
-            });
+            try {
+              await StorageService.clearData();
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              onDismiss();
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Onboarding' }],
+              });
+            } catch (e) {
+              console.error('Failed to clear data', e);
+            }
           }
         }
       ]
     );
+  };
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      setBackupMsg('');
+      if (!(await Sharing.isAvailableAsync())) {
+        setBackupMsg('Sharing not available on this device.');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        return;
+      }
+      const data = await StorageService.exportAllData();
+      const json = JSON.stringify(data, null, 2);
+      const fileName = `attendance-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      const file = new File(Paths.cache, fileName);
+      file.write(json, { encoding: 'utf8' });
+      await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: 'Save Attendance Backup', UTI: 'public.json' });
+      setBackupMsg('Export successful!');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e) {
+      setBackupMsg(`Export failed: ${e.message}`);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImport = async () => {
+    try {
+      setImporting(true);
+      setBackupMsg('');
+      const result = await DocumentPicker.getDocumentAsync({ type: 'application/json', copyToCacheDirectory: true });
+      if (result.canceled) return;
+      const pickedFile = result.assets[0];
+      const file = new File(pickedFile.uri);
+      const text = await file.text();
+      const backup = JSON.parse(text);
+      await StorageService.importAllData(backup);
+      setBackupMsg(`Restored from ${pickedFile.name || 'backup'}.`);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e) {
+      setBackupMsg(`Import failed: ${e.message}`);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setImporting(false);
+    }
   };
 
   // Reanimated style declarations
@@ -151,6 +218,28 @@ const SettingsModal = ({ visible, onDismiss, navigation }) => {
                 />
               </View>
 
+              {/* Daily Reminder Toggle */}
+              <View style={[styles.optionRow, { borderBottomColor: theme.colors.surfaceVariant }]}>
+                <View style={styles.optionInfo}>
+                  <Text variant="titleMedium" style={{ color: theme.colors.text, fontWeight: 'bold' }}>
+                    Daily Reminders
+                  </Text>
+                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                    Notify at 5:00 PM & 10:00 PM to mark attendance
+                  </Text>
+                </View>
+                <Switch
+                  value={remindersEnabled}
+                  onValueChange={async (val) => {
+                    setRemindersEnabledState(val);
+                    await setReminderEnabled(val);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }}
+                  trackColor={{ false: '#CBD5E1', true: theme.colors.primary }}
+                  thumbColor={Platform.OS === 'ios' ? undefined : '#FFF'}
+                />
+              </View>
+
               {/* Edit Student Profile Name Option */}
               <View style={styles.sectionHeader}>
                 <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.text }]}>
@@ -185,6 +274,7 @@ const SettingsModal = ({ visible, onDismiss, navigation }) => {
                   onPress={handleSaveName}
                   style={styles.saveBtn}
                   labelStyle={styles.btnLabel}
+                  accessibilityLabel="Save profile name"
                 >
                   Save Profile
                 </Button>
@@ -205,9 +295,51 @@ const SettingsModal = ({ visible, onDismiss, navigation }) => {
                   textColor={theme.colors.error}
                   borderColor={theme.colors.error}
                   labelStyle={styles.btnLabel}
+                  accessibilityLabel="Clear all app data"
                 >
                   Clear All App Data
                 </Button>
+              </View>
+
+              {/* Backup & Restore Section */}
+              <View style={[styles.resetContainer, { borderTopColor: theme.colors.surfaceVariant }]}>
+                <Text variant="titleMedium" style={[styles.resetTitle, { color: theme.colors.text }]}>
+                  Backup & Restore
+                </Text>
+                <Text variant="bodySmall" style={[styles.resetDesc, { color: theme.colors.onSurfaceVariant }]}>
+                  Export all data to a JSON file or restore from a previous backup.
+                </Text>
+                <View style={styles.backupRow}>
+                  <Button
+                    mode="contained"
+                    onPress={handleExport}
+                    loading={exporting}
+                    disabled={exporting || importing}
+                    icon="export"
+                    style={[styles.backupBtn, { flex: 1 }]}
+                    labelStyle={styles.btnLabel}
+                    accessibilityLabel="Export backup"
+                  >
+                    Export
+                  </Button>
+                  <Button
+                    mode="contained"
+                    onPress={handleImport}
+                    loading={importing}
+                    disabled={exporting || importing}
+                    icon="import"
+                    style={[styles.backupBtn, { flex: 1, backgroundColor: theme.colors.accent }]}
+                    labelStyle={styles.btnLabel}
+                    accessibilityLabel="Import backup"
+                  >
+                    Import
+                  </Button>
+                </View>
+                {!!backupMsg && (
+                  <Text style={[styles.msg, { color: backupMsg.includes('failed') ? theme.colors.error : theme.colors.attendanceGreen }]}>
+                    {backupMsg}
+                  </Text>
+                )}
               </View>
 
               <View style={styles.actions}>
@@ -314,6 +446,12 @@ const styles = StyleSheet.create({
   resetBtn: {
     borderRadius: 12,
     borderWidth: 1.5,
+  },
+  backupRow: {
+    flexDirection: 'row', gap: 10, marginBottom: 8,
+  },
+  backupBtn: {
+    borderRadius: 12,
   },
   actions: {
     alignItems: 'center',

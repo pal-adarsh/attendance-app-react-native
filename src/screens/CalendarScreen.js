@@ -27,19 +27,27 @@ const CalendarScreen = () => {
     );
 
     const loadData = async () => {
-        const [allSubjects, loadedTimetable] = await Promise.all([
-            StorageService.loadSubjects(),
-            StorageService.loadTimetable()
-        ]);
-        setSubjects(allSubjects);
-        setTimetable(loadedTimetable);
-        const records = await StorageService.getRecordsByDate(selectedDate);
-        applyRecords(records);
+        try {
+            const [allSubjects, loadedTimetable] = await Promise.all([
+                StorageService.loadSubjects(),
+                StorageService.loadTimetable()
+            ]);
+            setSubjects(allSubjects);
+            setTimetable(loadedTimetable);
+            const records = await StorageService.getRecordsByDate(selectedDate);
+            applyRecords(records);
+        } catch (e) {
+            console.error('Failed to load calendar data', e);
+        }
     };
 
     const loadAttendanceForDate = async (date) => {
-        const records = await StorageService.getRecordsByDate(date);
-        applyRecords(records);
+        try {
+            const records = await StorageService.getRecordsByDate(date);
+            applyRecords(records);
+        } catch (e) {
+            console.error('Failed to load attendance for date', e);
+        }
     };
 
     const applyRecords = (records) => {
@@ -57,17 +65,21 @@ const CalendarScreen = () => {
     };
 
     const markAttendance = async (subjectId, status) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-        await StorageService.updateAttendanceRecord(selectedDate, subjectId, status);
+            await StorageService.updateAttendanceRecord(selectedDate, subjectId, status);
 
-        setAttendanceStatus(prev => ({
-            ...prev,
-            [subjectId]: status
-        }));
+            setAttendanceStatus(prev => ({
+                ...prev,
+                [subjectId]: status
+            }));
 
-        const updatedSubjects = await StorageService.recomputeSubjectTotals(subjectId);
-        setSubjects(updatedSubjects);
+            const updatedSubjects = await StorageService.recomputeSubjectTotals(subjectId);
+            setSubjects(updatedSubjects);
+        } catch (e) {
+            console.error('Failed to mark attendance', e);
+        }
     };
 
     const clearAttendance = (subjectId) => {
@@ -81,17 +93,21 @@ const CalendarScreen = () => {
                     text: 'Clear',
                     style: 'destructive',
                     onPress: async () => {
-                        await StorageService.removeAttendanceRecord(selectedDate, subjectId);
+                        try {
+                            await StorageService.removeAttendanceRecord(selectedDate, subjectId);
 
-                        setAttendanceStatus(prev => {
-                            const next = { ...prev };
-                            delete next[subjectId];
-                            return next;
-                        });
+                            setAttendanceStatus(prev => {
+                                const next = { ...prev };
+                                delete next[subjectId];
+                                return next;
+                            });
 
-                        const updatedSubjects = await StorageService.recomputeSubjectTotals(subjectId);
-                        setSubjects(updatedSubjects);
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            const updatedSubjects = await StorageService.recomputeSubjectTotals(subjectId);
+                            setSubjects(updatedSubjects);
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        } catch (e) {
+                            console.error('Failed to clear attendance', e);
+                        }
                     },
                 },
             ]
@@ -187,7 +203,7 @@ const CalendarScreen = () => {
                                 <GradientCard key={subject.id} gradient={cardGradient} style={styles.subjectCard}>
                                     <View style={styles.subjectContent}>
                                         <View style={styles.subjectHeader}>
-                                            <Text variant="titleMedium" style={[styles.subjectName, { color: theme.colors.text }]}>
+                                            <Text variant="titleMedium" style={[styles.subjectName, { color: theme.colors.text }]} numberOfLines={1} ellipsizeMode="tail">
                                                 {subject.name}
                                             </Text>
                                             {status && (

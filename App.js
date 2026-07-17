@@ -7,6 +7,7 @@ import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StorageService, checkSchemaVersion, initializeStorage } from './src/utils/storage';
 import { ThemeProvider, useThemeContext } from './src/utils/ThemeContext';
+import { isReminderEnabled, scheduleReminders } from './src/utils/notifications';
 
 import CustomTabBar from './src/components/CustomTabBar';
 import SplashLoader from './src/components/SplashLoader';
@@ -20,6 +21,8 @@ import CalendarScreen from './src/screens/CalendarScreen';
 import AnalyticsScreen from './src/screens/AnalyticsScreen';
 import NotesHomeScreen from './src/screens/NotesHomeScreen';
 import NoteEditorScreen from './src/screens/NoteEditorScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import HowToUseScreen from './src/screens/HowToUseScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -66,6 +69,8 @@ function AppContent() {
     try {
       await checkSchemaVersion();
       await initializeStorage();
+      const reminderOn = await isReminderEnabled();
+      if (reminderOn) scheduleReminders();
       const profile = await StorageService.loadStudentProfile();
       setIsOnboarded(profile.setupComplete);
     } catch (e) {
@@ -108,6 +113,20 @@ function AppContent() {
               <Stack.Screen
                 name="NoteEditor"
                 component={NoteEditorScreen}
+                options={{
+                  cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+                }}
+              />
+              <Stack.Screen
+                name="Settings"
+                component={SettingsScreen}
+                options={{
+                  cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+                }}
+              />
+              <Stack.Screen
+                name="HowToUse"
+                component={HowToUseScreen}
                 options={{
                   cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
                 }}
