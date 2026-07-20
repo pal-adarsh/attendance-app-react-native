@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, FlatList, Alert } from 'react-native';
-import { FAB, useTheme, Text, IconButton } from 'react-native-paper';
+import { View, StyleSheet, FlatList, Alert, Pressable } from 'react-native';
+import { useTheme, Text, IconButton } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Animated, {
@@ -257,18 +257,19 @@ const SubjectsScreen = () => {
             )}
 
             <Animated.View style={[styles.fab, animatedFabStyle]}>
-                <LinearGradient
-                    colors={gradients.primary}
-                    style={[styles.fabGradient, shadows.large]}
-                >
-                    <FAB
-                        icon="plus"
-                        style={styles.fabButton}
-                        color="#FFF"
-                        onPress={openAddModal}
-                        accessibilityLabel="Add new subject"
-                    />
-                </LinearGradient>
+                <Pressable onPress={openAddModal} accessibilityLabel="Add new subject">
+                    <LinearGradient
+                        colors={gradients.primary}
+                        style={[styles.fabGradient, shadows.large]}
+                    >
+                        <IconButton
+                            icon="plus"
+                            size={28}
+                            iconColor="#FFF"
+                            style={{ margin: 0 }}
+                        />
+                    </LinearGradient>
+                </Pressable>
             </Animated.View>
 
             <AddEditSubjectModal
@@ -353,7 +354,11 @@ const styles = StyleSheet.create({
         bottom: 0,
     },
     fabGradient: {
+        width: 56,
+        height: 56,
         borderRadius: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
         overflow: 'hidden',
     },
     fabButton: {

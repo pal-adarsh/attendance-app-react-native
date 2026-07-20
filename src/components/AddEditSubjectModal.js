@@ -17,8 +17,6 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
   const theme = useTheme();
   const { isDark } = useThemeContext();
   const [name, setName] = useState('');
-  const [attended, setAttended] = useState('0');
-  const [total, setTotal] = useState('0');
   const [target, setTarget] = useState('75');
   const [lecturesPerWeek, setLecturesPerWeek] = useState('0');
   const [error, setError] = useState('');
@@ -29,8 +27,6 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
   const shakeX = useSharedValue(0);
 
   const nameFocus = useSharedValue(0);
-  const attendedFocus = useSharedValue(0);
-  const totalFocus = useSharedValue(0);
   const targetFocus = useSharedValue(0);
   const lpwFocus = useSharedValue(0);
 
@@ -49,8 +45,6 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
   useEffect(() => {
     if (editingSubject) {
       setName(editingSubject.name);
-      setAttended(String(editingSubject.attended));
-      setTotal(String(editingSubject.total));
       setTarget(String(editingSubject.target || 75));
       setLecturesPerWeek(String(editingSubject.lecturesPerWeek || 0));
     } else {
@@ -60,8 +54,6 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
 
   const resetForm = () => {
     setName('');
-    setAttended('0');
-    setTotal('0');
     setTarget('75');
     setLecturesPerWeek('0');
     setError('');
@@ -87,22 +79,14 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
       return;
     }
 
-    let attendedNum = parseInt(attended) || 0;
-    let totalNum = parseInt(total) || 0;
     let targetNum = parseInt(target) || 75;
     let lecturesPerWeekNum = parseInt(lecturesPerWeek) || 0;
 
-    // Input clamping
     targetNum = Math.max(1, Math.min(targetNum, 100));
     lecturesPerWeekNum = Math.max(0, Math.min(lecturesPerWeekNum, 50));
-    attendedNum = Math.max(0, attendedNum);
-    totalNum = Math.max(0, totalNum);
 
-    if (attendedNum > totalNum) {
-      setError('Attended lectures cannot exceed total');
-      triggerShake();
-      return;
-    }
+    let attendedNum = editingSubject ? (editingSubject.attended ?? 0) : 0;
+    let totalNum = editingSubject ? (editingSubject.total ?? 0) : 0;
 
     const baselineAttended = editingSubject ? (editingSubject.baselineAttended ?? 0) : 0;
     const baselineTotal = editingSubject ? (editingSubject.baselineTotal ?? 0) : 0;
@@ -180,53 +164,12 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
                   activeUnderlineColor="transparent"
                   style={[styles.input, { backgroundColor: 'transparent' }]}
                   textColor={theme.colors.text}
-                  theme={{ colors: { primary: theme.colors.primary } }}
+                  theme={{ colors: { primary: isDark ? '#FFFFFF' : theme.colors.primary, onSurfaceVariant: isDark ? '#A1A1AA' : '#64748B' } }}
                   placeholderTextColor={theme.colors.onSurfaceVariant}
                   onFocus={() => (nameFocus.value = 1)}
                   onBlur={() => (nameFocus.value = 0)}
                 />
               </Animated.View>
-
-              <View style={styles.row}>
-                <Animated.View style={[styles.inputWrapper, styles.halfInput, { backgroundColor: inputBgColor }, getFocusStyle(attendedFocus)]}>
-                  <TextInput
-                    label="Attended"
-                    value={attended}
-                    onChangeText={(text) => {
-                      setAttended(text);
-                      setError('');
-                    }}
-                    keyboardType="numeric"
-                    mode="flat"
-                    underlineColor="transparent"
-                    activeUnderlineColor="transparent"
-                    style={[styles.input, { backgroundColor: 'transparent' }]}
-                    textColor={theme.colors.text}
-                    theme={{ colors: { primary: theme.colors.primary } }}
-                    onFocus={() => (attendedFocus.value = 1)}
-                    onBlur={() => (attendedFocus.value = 0)}
-                  />
-                </Animated.View>
-                <Animated.View style={[styles.inputWrapper, styles.halfInput, { backgroundColor: inputBgColor }, getFocusStyle(totalFocus)]}>
-                  <TextInput
-                    label="Total"
-                    value={total}
-                    onChangeText={(text) => {
-                      setTotal(text);
-                      setError('');
-                    }}
-                    keyboardType="numeric"
-                    mode="flat"
-                    underlineColor="transparent"
-                    activeUnderlineColor="transparent"
-                    style={[styles.input, { backgroundColor: 'transparent' }]}
-                    textColor={theme.colors.text}
-                    theme={{ colors: { primary: theme.colors.primary } }}
-                    onFocus={() => (totalFocus.value = 1)}
-                    onBlur={() => (totalFocus.value = 0)}
-                  />
-                </Animated.View>
-              </View>
 
               <View style={styles.row}>
                 <Animated.View style={[styles.inputWrapper, styles.halfInput, { backgroundColor: inputBgColor }, getFocusStyle(targetFocus)]}>
@@ -243,7 +186,7 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
                     activeUnderlineColor="transparent"
                     style={[styles.input, { backgroundColor: 'transparent' }]}
                     textColor={theme.colors.text}
-                    theme={{ colors: { primary: theme.colors.primary } }}
+                    theme={{ colors: { primary: isDark ? '#FFFFFF' : theme.colors.primary, onSurfaceVariant: isDark ? '#A1A1AA' : '#64748B' } }}
                     onFocus={() => (targetFocus.value = 1)}
                     onBlur={() => (targetFocus.value = 0)}
                   />
@@ -262,7 +205,7 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
                     activeUnderlineColor="transparent"
                     style={[styles.input, { backgroundColor: 'transparent' }]}
                     textColor={theme.colors.text}
-                    theme={{ colors: { primary: theme.colors.primary } }}
+                    theme={{ colors: { primary: isDark ? '#FFFFFF' : theme.colors.primary, onSurfaceVariant: isDark ? '#A1A1AA' : '#64748B' } }}
                     onFocus={() => (lpwFocus.value = 1)}
                     onBlur={() => (lpwFocus.value = 0)}
                   />

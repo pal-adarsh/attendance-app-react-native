@@ -9,6 +9,7 @@ const RECORDS_KEY = '@attendance_records';
 const THEME_KEY = '@attendance_theme_mode';
 const SCHEMA_VERSION_KEY = '@attendance_schema_version';
 const NOTES_KEY = '@attendance_notes';
+const TODOS_KEY = '@attendance_todos';
 
 /**
  * @typedef {Object} Subject
@@ -460,6 +461,67 @@ export const StorageService = {
     async loadNotesForSubject(subjectId) {
         const notes = await this.loadNotes();
         return notes.filter(n => n.subjectId === subjectId);
+    },
+
+    // ========== TODOS ==========
+    async loadTodos() {
+        try {
+            const jsonValue = await AsyncStorage.getItem(TODOS_KEY);
+            return jsonValue != null ? JSON.parse(jsonValue) : [];
+        } catch (e) {
+            console.error('Failed to load todos', e);
+            return [];
+        }
+    },
+
+    async saveTodos(todos) {
+        try {
+            await AsyncStorage.setItem(TODOS_KEY, JSON.stringify(todos));
+        } catch (e) {
+            console.error('Failed to save todos', e);
+        }
+    },
+
+    async addTodo(text, subjectId = null) {
+        let todos = await this.loadTodos();
+        if (!Array.isArray(todos)) {
+            todos = [];
+        }
+        const now = new Date().toISOString();
+        const newTodo = {
+            id: generateId(),
+            text: text.trim(),
+            completed: false,
+            subjectId: subjectId || null,
+            createdAt: now,
+            updatedAt: now,
+        };
+        const updated = [newTodo, ...todos];
+        await this.saveTodos(updated);
+        return updated;
+    },
+
+    async toggleTodo(id) {
+        const todos = await this.loadTodos();
+        const updated = todos.map(t =>
+            t.id === id ? { ...t, completed: !t.completed, updatedAt: new Date().toISOString() } : t
+        );
+        await this.saveTodos(updated);
+        return updated;
+    },
+
+    async deleteTodo(id) {
+        const todos = await this.loadTodos();
+        const updated = todos.filter(t => t.id !== id);
+        await this.saveTodos(updated);
+        return updated;
+    },
+
+    async clearCompletedTodos() {
+        const todos = await this.loadTodos();
+        const updated = todos.filter(t => !t.completed);
+        await this.saveTodos(updated);
+        return updated;
     },
 
     // ========== EXPORT / IMPORT ==========
