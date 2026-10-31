@@ -5,6 +5,7 @@ import { PaperProvider } from 'react-native-paper';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StorageService, checkSchemaVersion, initializeStorage } from './src/utils/storage';
 import { ThemeProvider, useThemeContext } from './src/utils/ThemeContext';
 import { isReminderEnabled, scheduleReminders } from './src/utils/notifications';
@@ -95,47 +96,49 @@ function AppContent() {
   }
 
   return (
-    <SafeAreaProvider>
-      <PaperProvider theme={theme}>
-        <ErrorBoundary>
-          <NavigationContainer theme={theme}>
-            <StatusBar style={isDark ? "light" : "dark"} backgroundColor={theme.colors.background} />
-            <Stack.Navigator
-              initialRouteName={isOnboarded ? 'MainTabs' : 'Onboarding'}
-              screenOptions={{
-                headerShown: false,
-                cardStyle: { backgroundColor: theme.colors.background },
-                cardStyleInterpolator: CardStyleInterpolators.forFadeFromCenter,
-              }}
-            >
-              <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-              <Stack.Screen name="MainTabs" component={MainTabs} />
-              <Stack.Screen
-                name="NoteEditor"
-                component={NoteEditorScreen}
-                options={{
-                  cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <PaperProvider theme={theme}>
+          <ErrorBoundary>
+            <NavigationContainer theme={theme}>
+              <StatusBar style={isDark ? "light" : "dark"} backgroundColor={theme.colors.background} />
+              <Stack.Navigator
+                initialRouteName={isOnboarded ? 'MainTabs' : 'Onboarding'}
+                screenOptions={{
+                  headerShown: false,
+                  cardStyle: { backgroundColor: theme.colors.background },
+                  cardStyleInterpolator: CardStyleInterpolators.forFadeFromCenter,
                 }}
-              />
-              <Stack.Screen
-                name="Settings"
-                component={SettingsScreen}
-                options={{
-                  cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
-                }}
-              />
-              <Stack.Screen
-                name="HowToUse"
-                component={HowToUseScreen}
-                options={{
-                  cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
-                }}
-              />
-            </Stack.Navigator>
-          </NavigationContainer>
-        </ErrorBoundary>
-      </PaperProvider>
-    </SafeAreaProvider>
+              >
+                <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+                <Stack.Screen name="MainTabs" component={MainTabs} />
+                <Stack.Screen
+                  name="NoteEditor"
+                  component={NoteEditorScreen}
+                  options={{
+                    cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+                  }}
+                />
+                <Stack.Screen
+                  name="Settings"
+                  component={SettingsScreen}
+                  options={{
+                    cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+                  }}
+                />
+                <Stack.Screen
+                  name="HowToUse"
+                  component={HowToUseScreen}
+                  options={{
+                    cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+                  }}
+                />
+              </Stack.Navigator>
+            </NavigationContainer>
+          </ErrorBoundary>
+        </PaperProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 

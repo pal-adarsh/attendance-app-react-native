@@ -23,6 +23,7 @@ const SettingsScreen = ({ navigation }) => {
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [remindersEnabled, setRemindersEnabledState] = useState(true);
+  const [saturdayEnabled, setSaturdayEnabledState] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -34,6 +35,8 @@ const SettingsScreen = ({ navigation }) => {
       setName(profile.name);
       const enabled = await isReminderEnabled();
       setRemindersEnabledState(enabled);
+      const satActive = await StorageService.isSaturdayEnabled();
+      setSaturdayEnabledState(satActive);
     } catch (e) {
       console.error('Failed to load profile', e);
     }
@@ -190,6 +193,29 @@ const SettingsScreen = ({ navigation }) => {
               onValueChange={async (val) => {
                 setRemindersEnabledState(val);
                 await setReminderEnabled(val);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              trackColor={{ false: '#CBD5E1', true: theme.colors.primary }}
+              thumbColor={Platform.OS === 'ios' ? undefined : '#FFF'}
+            />
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: theme.colors.surfaceVariant }]} />
+
+          <View style={styles.optionRow}>
+            <View style={styles.optionInfo}>
+              <Text variant="titleMedium" style={{ color: theme.colors.text, fontWeight: 'bold' }}>
+                Saturday Working Day
+              </Text>
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                Include Saturday in timetable & attendance
+              </Text>
+            </View>
+            <Switch
+              value={saturdayEnabled}
+              onValueChange={async (val) => {
+                setSaturdayEnabledState(val);
+                await StorageService.setSaturdayEnabled(val);
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
               trackColor={{ false: '#CBD5E1', true: theme.colors.primary }}

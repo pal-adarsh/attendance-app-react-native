@@ -82,10 +82,14 @@ export const getLecturesSkippable = (attended, total, target = 75) => {
  * @returns {{ current: number, longest: number }}
  */
 export const getAttendanceStreak = (records, todayDate) => {
-    const presentDates = records
-        .filter(r => r.status === 'present')
-        .map(r => r.date)
-        .sort();
+    // Deduplicate dates so multiple lectures on the same day don't reset streak
+    const presentDates = Array.from(
+        new Set(
+            records
+                .filter(r => r.status === 'present' || r.status === 'od')
+                .map(r => r.date)
+        )
+    ).sort();
 
     if (presentDates.length === 0) return { current: 0, longest: 0 };
 
@@ -95,19 +99,19 @@ export const getAttendanceStreak = (records, todayDate) => {
 
     // Longest streak
     for (let i = 1; i < presentDates.length; i++) {
-        const prev = new Date(presentDates[i - 1]);
-        const curr = new Date(presentDates[i]);
-        const diffDays = (curr - prev) / (1000 * 60 * 60 * 24);
+        const prev = new Date(presentDates[i - 1] + 'T00:00:00');
+        const curr = new Date(presentDates[i] + 'T00:00:00');
+        const diffDays = Math.round((curr - prev) / (1000 * 60 * 60 * 24));
         if (diffDays === 1) {
             run++;
             if (run > longest) longest = run;
-        } else {
+        } else if (diffDays > 1) {
             run = 1;
         }
     }
 
-    // Current streak (counting backward from today)
-    const today = new Date(todayDate);
+    // Current streak (counting backward from today or yesterday)
+    const today = new Date(todayDate + 'T00:00:00');
     let checkDate = new Date(today);
     const presentSet = new Set(presentDates);
 
@@ -121,6 +125,11 @@ export const getAttendanceStreak = (records, todayDate) => {
             current++;
             checkDate.setDate(checkDate.getDate() - 1);
         } else {
+            // If today is not marked yet, give student benefit of the doubt and check from yesterday
+            if (i === 0) {
+                checkDate.setDate(checkDate.getDate() - 1);
+                continue;
+            }
             break;
         }
     }
@@ -139,11 +148,12 @@ export const getDayOfWeekStats = (records) => {
     const dayAttended = {};
 
     for (const r of records) {
+        if (r.status === 'cancelled') continue; // Cancelled does not count towards day total
         const date = new Date(r.date + 'T00:00:00');
         const day = date.getDay();
         const key = dayNames[day];
         dayTotals[key] = (dayTotals[key] || 0) + 1;
-        if (r.status === 'present') {
+        if (r.status === 'present' || r.status === 'od') {
             dayAttended[key] = (dayAttended[key] || 0) + 1;
         }
     }
@@ -175,9 +185,10 @@ export const getWeeklyTrend = (records, todayDate, maxWeeks = 8) => {
         const startStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
         const endStr = `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, '0')}-${String(weekEnd.getDate()).padStart(2, '0')}`;
 
-        const weekRecords = records.filter(r => r.date >= startStr && r.date <= endStr);
+        // Exclude cancelled records from weekly trend
+        const weekRecords = records.filter(r => r.date >= startStr && r.date <= endStr && r.status !== 'cancelled');
         const total = weekRecords.length;
-        const attended = weekRecords.filter(r => r.status === 'present').length;
+        const attended = weekRecords.filter(r => r.status === 'present' || r.status === 'od').length;
 
         weeks.unshift({
             label: `W${maxWeeks - w}`,

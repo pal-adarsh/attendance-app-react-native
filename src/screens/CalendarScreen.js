@@ -1,16 +1,17 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Pressable } from 'react-native';
-import { Text, Button, useTheme, IconButton } from 'react-native-paper';
+import { Text, useTheme, IconButton, Chip } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
-import Animated, { FadeInDown, ZoomIn, useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import GradientCard from '../components/GradientCard';
+import AddExtraClassModal from '../components/AddExtraClassModal';
 import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
 import { gradients, shadows } from '../constants/theme';
 import { Calendar } from 'react-native-calendars';
-import { toLocalDateString, getLocalDayName, isFutureLocalDate, isWeekendLocalDate, formatLocalDate } from '../utils/dateUtils';
+import { toLocalDateString, getLocalDayName, isFutureLocalDate, formatLocalDate } from '../utils/dateUtils';
 
 const CalendarScreen = () => {
     const theme = useTheme();
@@ -18,7 +19,12 @@ const CalendarScreen = () => {
     const [selectedDate, setSelectedDate] = useState(toLocalDateString());
     const [subjects, setSubjects] = useState([]);
     const [timetable, setTimetable] = useState({});
+    const [allRecords, setAllRecords] = useState([]);
+    const [holidays, setHolidays] = useState([]);
+    const [isSaturdayEnabled, setIsSaturdayEnabled] = useState(false);
     const [attendanceStatus, setAttendanceStatus] = useState({});
+    const [extraRecords, setExtraRecords] = useState([]);
+    const [extraModalVisible, setExtraModalVisible] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -28,34 +34,55 @@ const CalendarScreen = () => {
 
     const loadData = async () => {
         try {
-            const [allSubjects, loadedTimetable] = await Promise.all([
+            const [allSubjects, loadedTimetable, records, loadedHolidays, satEnabled] = await Promise.all([
                 StorageService.loadSubjects(),
-                StorageService.loadTimetable()
+                StorageService.loadTimetable(),
+                StorageService.loadAttendanceRecords(),
+                StorageService.loadHolidays(),
+                StorageService.isSaturdayEnabled(),
             ]);
             setSubjects(allSubjects);
             setTimetable(loadedTimetable);
-            const records = await StorageService.getRecordsByDate(selectedDate);
-            applyRecords(records);
+            setAllRecords(records);
+            setHolidays(loadedHolidays);
+            setIsSaturdayEnabled(satEnabled);
+
+            applyRecordsForDate(records, selectedDate);
         } catch (e) {
             console.error('Failed to load calendar data', e);
         }
     };
 
-    const loadAttendanceForDate = async (date) => {
-        try {
-            const records = await StorageService.getRecordsByDate(date);
-            applyRecords(records);
-        } catch (e) {
-            console.error('Failed to load attendance for date', e);
-        }
-    };
-
-    const applyRecords = (records) => {
+    const applyRecordsForDate = (records, date) => {
+        const dateRecords = records.filter(r => r.date === date);
         const statusMap = {};
-        records.forEach(record => {
-            statusMap[record.subjectId] = record.status;
+        const extras = [];
+        dateRecords.forEach(record => {
+            if (record.isExtra) {
+                extras.push(record);
+            } else {
+                statusMap[record.subjectId] = record.status;
+            }
         });
         setAttendanceStatus(statusMap);
+        setExtraRecords(extras);
+    };
+
+    const handleDayPress = (day) => {
+        setSelectedDate(day.dateString);
+        applyRecordsForDate(allRecords, day.dateString);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    };
+
+    const isSelectedDateHoliday = useMemo(() => {
+        return holidays.some(h => (typeof h === 'string' ? h === selectedDate : h.date === selectedDate));
+    }, [holidays, selectedDate]);
+
+    const toggleSelectedDateHoliday = async () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        const { holidays: updated } = await StorageService.toggleHoliday(selectedDate);
+        setHolidays(updated);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     };
 
     const getSubjectsForDate = (date) => {
@@ -64,16 +91,13 @@ const CalendarScreen = () => {
         return subjects.filter(s => subjectIds.includes(s.id));
     };
 
-    const markAttendance = async (subjectId, status) => {
+    const markAttendance = async (subjectId, status, recordId = null, isExtra = false) => {
         try {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-            await StorageService.updateAttendanceRecord(selectedDate, subjectId, status);
-
-            setAttendanceStatus(prev => ({
-                ...prev,
-                [subjectId]: status
-            }));
+            const updatedRecords = await StorageService.updateAttendanceRecord(selectedDate, subjectId, status, recordId, isExtra);
+            setAllRecords(updatedRecords);
+            applyRecordsForDate(updatedRecords, selectedDate);
 
             const updatedSubjects = await StorageService.recomputeSubjectTotals(subjectId);
             setSubjects(updatedSubjects);
@@ -82,10 +106,10 @@ const CalendarScreen = () => {
         }
     };
 
-    const clearAttendance = (subjectId) => {
+    const clearAttendance = (subjectId, recordId = null) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         Alert.alert(
-            'Clear attendance for this day?',
+            'Clear attendance for this class?',
             '',
             [
                 { text: 'Cancel', style: 'cancel' },
@@ -94,13 +118,9 @@ const CalendarScreen = () => {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await StorageService.removeAttendanceRecord(selectedDate, subjectId);
-
-                            setAttendanceStatus(prev => {
-                                const next = { ...prev };
-                                delete next[subjectId];
-                                return next;
-                            });
+                            const updatedRecords = await StorageService.removeAttendanceRecord(selectedDate, subjectId, recordId);
+                            setAllRecords(updatedRecords);
+                            applyRecordsForDate(updatedRecords, selectedDate);
 
                             const updatedSubjects = await StorageService.recomputeSubjectTotals(subjectId);
                             setSubjects(updatedSubjects);
@@ -114,48 +134,74 @@ const CalendarScreen = () => {
         );
     };
 
+    // Build markedDates object with dots and indicators
+    const markedDates = useMemo(() => {
+        const marks = {};
+
+        // Aggregate by date
+        const byDate = {};
+        allRecords.forEach(r => {
+            if (!byDate[r.date]) byDate[r.date] = [];
+            byDate[r.date].push(r.status);
+        });
+
+        Object.keys(byDate).forEach(date => {
+            const statuses = byDate[date];
+            const hasAbsent = statuses.includes('absent');
+            const hasPresentOrOD = statuses.includes('present') || statuses.includes('od');
+
+            let dotColor = theme.colors.attendanceGreen;
+            if (hasAbsent && hasPresentOrOD) dotColor = theme.colors.attendanceYellow;
+            else if (hasAbsent) dotColor = theme.colors.attendanceRed;
+
+            marks[date] = {
+                marked: true,
+                dotColor,
+            };
+        });
+
+        // Mark holidays
+        holidays.forEach(h => {
+            const hDate = typeof h === 'string' ? h : h.date;
+            marks[hDate] = {
+                ...(marks[hDate] || {}),
+                marked: true,
+                dotColor: theme.colors.attendanceYellow,
+            };
+        });
+
+        // Current selected date
+        marks[selectedDate] = {
+            ...(marks[selectedDate] || {}),
+            selected: true,
+            selectedColor: theme.colors.primary,
+            selectedTextColor: '#FFF',
+        };
+
+        return marks;
+    }, [allRecords, holidays, selectedDate, theme.colors]);
+
     const dateSubjects = getSubjectsForDate(selectedDate);
     const isFuture = isFutureLocalDate(selectedDate);
-    const isWeekend = isWeekendLocalDate(selectedDate);
 
-    const AnimatedPressable = ({ children, onPress, style: extStyle }) => {
-        const scale = useSharedValue(1);
-        const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-        return (
-            <Pressable
-                onPress={onPress}
-                onPressIn={() => { scale.value = withSpring(0.96); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                onPressOut={() => { scale.value = withSpring(1); }}
-            >
-                <Animated.View style={[animStyle, extStyle]}>
-                    {children}
-                </Animated.View>
-            </Pressable>
-        );
-    };
+    // Weekend check
+    const dateObj = new Date(selectedDate + 'T00:00:00');
+    const isSunday = dateObj.getDay() === 0;
+    const isSaturday = dateObj.getDay() === 6;
+    const isWeekend = isSunday || (isSaturday && !isSaturdayEnabled && dateSubjects.length === 0);
 
     const backgroundGradient = isDark ? gradients.darkBackground : gradients.lightBackground;
     const cardGradient = isDark ? gradients.darkCard : gradients.lightCard;
-    const defaultButtonColors = isDark ? ['#2C2C2C', '#2C2C2C'] : ['#E2E8F0', '#E2E8F0'];
 
     return (
         <LinearGradient colors={backgroundGradient} style={styles.container}>
-            <ScrollView>
+            <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Calendar View */}
                 <Animated.View entering={FadeInDown.duration(500)} style={styles.calendarContainer}>
                     <Calendar
                         current={selectedDate}
-                        onDayPress={(day) => {
-                            setSelectedDate(day.dateString);
-                            loadAttendanceForDate(day.dateString);
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        }}
-                        markedDates={{
-                            [selectedDate]: {
-                                selected: true,
-                                selectedColor: theme.colors.primary,
-                                selectedTextColor: '#FFF',
-                            }
-                        }}
+                        onDayPress={handleDayPress}
+                        markedDates={markedDates}
                         theme={{
                             backgroundColor: 'transparent',
                             calendarBackground: 'transparent',
@@ -181,16 +227,45 @@ const CalendarScreen = () => {
                     />
                 </Animated.View>
 
-                <Animated.View
-                    key={selectedDate}
-                    entering={FadeInDown.duration(400)}
-                    style={styles.content}
-                >
-                    <Text variant="titleLarge" style={[styles.dateTitle, { color: theme.colors.text }]}>
-                        {formatLocalDate(selectedDate)}
-                    </Text>
+                {/* Day Details View */}
+                <Animated.View key={selectedDate} entering={FadeInDown.duration(400)} style={styles.content}>
+                    <View style={styles.dateHeaderRow}>
+                        <View style={{ flex: 1 }}>
+                            <Text variant="titleLarge" style={[styles.dateTitle, { color: theme.colors.text }]}>
+                                {formatLocalDate(selectedDate)}
+                            </Text>
+                        </View>
+                        <Chip
+                            icon={isSelectedDateHoliday ? 'weather-sunny' : 'palm-tree'}
+                            selected={isSelectedDateHoliday}
+                            onPress={toggleSelectedDateHoliday}
+                            style={[
+                                styles.holidayChip,
+                                isSelectedDateHoliday && { backgroundColor: theme.colors.attendanceYellow + '25', borderColor: theme.colors.attendanceYellow }
+                            ]}
+                            textStyle={{
+                                color: isSelectedDateHoliday ? theme.colors.attendanceYellow : theme.colors.onSurfaceVariant,
+                                fontSize: 11,
+                                fontWeight: isSelectedDateHoliday ? 'bold' : 'normal',
+                            }}
+                        >
+                            {isSelectedDateHoliday ? '🌴 Holiday' : 'Set Holiday'}
+                        </Chip>
+                    </View>
 
-                    {isFuture ? (
+                    {isSelectedDateHoliday ? (
+                        <GradientCard gradient={cardGradient} style={styles.infoCard}>
+                            <View style={styles.infoContent}>
+                                <Text style={styles.infoEmoji}>🌴</Text>
+                                <Text variant="titleMedium" style={[styles.infoTitle, { color: theme.colors.text }]}>
+                                    Marked as Holiday / College Off
+                                </Text>
+                                <Text variant="bodyMedium" style={[styles.infoSubtitle, { color: theme.colors.onSurfaceVariant }]}>
+                                    Classes on this date do not affect your attendance record.
+                                </Text>
+                            </View>
+                        </GradientCard>
+                    ) : isFuture ? (
                         <GradientCard gradient={cardGradient} style={styles.infoCard}>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoEmoji}>🚫</Text>
@@ -199,196 +274,191 @@ const CalendarScreen = () => {
                                 </Text>
                             </View>
                         </GradientCard>
-                    ) : isWeekend ? (
+                    ) : isWeekend && dateSubjects.length === 0 ? (
                         <GradientCard gradient={cardGradient} style={styles.infoCard}>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoEmoji}>🎉</Text>
                                 <Text variant="titleMedium" style={[styles.infoTitle, { color: theme.colors.text }]}>
-                                    No lectures on weekends
+                                    Weekend Day
+                                </Text>
+                                <Text variant="bodyMedium" style={[styles.infoSubtitle, { color: theme.colors.onSurfaceVariant }]}>
+                                    No regular classes scheduled.
                                 </Text>
                             </View>
                         </GradientCard>
-                    ) : dateSubjects.length === 0 ? (
+                    ) : dateSubjects.length === 0 && extraRecords.length === 0 ? (
                         <GradientCard gradient={cardGradient} style={styles.infoCard}>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoEmoji}>📅</Text>
                                 <Text variant="titleMedium" style={[styles.infoTitle, { color: theme.colors.text }]}>
-                                    No lectures scheduled for this day
+                                    No classes on this day
                                 </Text>
                             </View>
                         </GradientCard>
                     ) : (
-                        dateSubjects.map((subject) => {
-                            const status = attendanceStatus[subject.id];
+                        <>
+                            {dateSubjects.map((subject, index) => {
+                                const status = attendanceStatus[subject.id];
+                                return (
+                                    <PastLectureCard
+                                        key={subject.id}
+                                        subject={subject}
+                                        status={status}
+                                        theme={theme}
+                                        isDark={isDark}
+                                        cardGradient={cardGradient}
+                                        onMark={(s) => markAttendance(subject.id, s)}
+                                        onClear={() => clearAttendance(subject.id)}
+                                    />
+                                );
+                            })}
 
-                            return (
-                                <GradientCard key={subject.id} gradient={cardGradient} style={styles.subjectCard}>
-                                    <View style={styles.subjectContent}>
-                                        <View style={styles.subjectHeader}>
-                                            <Text variant="titleMedium" style={[styles.subjectName, { color: theme.colors.text }]} numberOfLines={1} ellipsizeMode="tail">
-                                                {subject.name}
-                                            </Text>
-                                            {status && (
-                                                <View style={styles.headerActions}>
-                                                    <IconButton
-                                                        icon="close-circle-outline"
-                                                        size={22}
-                                                        onPress={() => clearAttendance(subject.id)}
-                                                        iconColor={theme.colors.onSurfaceVariant}
-                                                        accessibilityLabel="Clear attendance"
-                                                    />
-                                                    <Animated.View
-                                                        entering={ZoomIn.springify()}
-                                                        style={[
-                                                            styles.statusBadge,
-                                                            {
-                                                                backgroundColor: status === 'present'
-                                                                    ? theme.colors.attendanceGreen
-                                                                    : theme.colors.attendanceRed
-                                                            }
-                                                        ]}
-                                                    >
-                                                        <Text style={styles.statusText}>
-                                                            {status === 'present' ? '✓' : '✗'}
-                                                        </Text>
-                                                    </Animated.View>
-                                                </View>
-                                            )}
-                                        </View>
-
-                                        <View style={styles.buttonContainer}>
-                                            <AnimatedPressable style={styles.buttonFlex}>
-                                                <LinearGradient
-                                                    colors={status === 'present' ? gradients.success : defaultButtonColors}
-                                                    style={[styles.buttonGradient, shadows.small]}
-                                                >
-                                                    <Button
-                                                        mode={status === 'present' ? 'contained' : 'outlined'}
-                                                        onPress={() => markAttendance(subject.id, 'present')}
-                                                        style={styles.button}
-                                                        labelStyle={[
-                                                            styles.buttonLabel,
-                                                            status === 'present' ? { color: '#FFF' } : { color: theme.colors.onSurface }
-                                                        ]}
-                                                        buttonColor="transparent"
-                                                        accessibilityLabel="Mark present"
-                                                    >
-                                                        Present
-                                                    </Button>
-                                                </LinearGradient>
-                                            </AnimatedPressable>
-
-                                            <AnimatedPressable style={styles.buttonFlex}>
-                                                <LinearGradient
-                                                    colors={status === 'absent' ? gradients.danger : defaultButtonColors}
-                                                    style={[styles.buttonGradient, shadows.small]}
-                                                >
-                                                    <Button
-                                                        mode={status === 'absent' ? 'contained' : 'outlined'}
-                                                        onPress={() => markAttendance(subject.id, 'absent')}
-                                                        style={styles.button}
-                                                        labelStyle={[
-                                                            styles.buttonLabel,
-                                                            status === 'absent' ? { color: '#FFF' } : { color: theme.colors.onSurface }
-                                                        ]}
-                                                        buttonColor="transparent"
-                                                        accessibilityLabel="Mark absent"
-                                                    >
-                                                        Absent
-                                                    </Button>
-                                                </LinearGradient>
-                                            </AnimatedPressable>
-                                        </View>
-                                    </View>
-                                </GradientCard>
-                            );
-                        })
+                            {extraRecords.map((record) => {
+                                const subject = subjects.find(s => s.id === record.subjectId) || { name: 'Extra Class', id: record.subjectId };
+                                return (
+                                    <PastLectureCard
+                                        key={record.id}
+                                        subject={subject}
+                                        status={record.status}
+                                        theme={theme}
+                                        isDark={isDark}
+                                        cardGradient={cardGradient}
+                                        isExtra={true}
+                                        onMark={(s) => markAttendance(record.subjectId, s, record.id, true)}
+                                        onClear={() => clearAttendance(record.subjectId, record.id)}
+                                    />
+                                );
+                            })}
+                        </>
                     )}
                 </Animated.View>
             </ScrollView>
+
+            <AddExtraClassModal
+                visible={extraModalVisible}
+                onDismiss={() => setExtraModalVisible(false)}
+                date={selectedDate}
+                subjects={subjects}
+                onSaved={loadData}
+            />
         </LinearGradient>
     );
 };
 
+const PastLectureCard = ({ subject, status, theme, isDark, cardGradient, isExtra = false, onMark, onClear }) => {
+    const isMarked = !!status;
+
+    const getStatusInfo = (st) => {
+        switch (st) {
+            case 'present': return { label: '✓ Present', color: theme.colors.attendanceGreen };
+            case 'absent': return { label: '✗ Absent', color: theme.colors.attendanceRed };
+            case 'od': return { label: '🛡️ OD / Duty', color: '#03DAC6' };
+            case 'cancelled': return { label: '🚫 Cancelled', color: '#A1A1AA' };
+            default: return null;
+        }
+    };
+
+    const statusInfo = getStatusInfo(status);
+
+    return (
+        <GradientCard gradient={cardGradient} style={styles.lectureCard}>
+            <View style={styles.lectureContent}>
+                <View style={styles.lectureHeader}>
+                    <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text variant="titleMedium" style={[styles.lectureName, { color: theme.colors.text }]} numberOfLines={1}>
+                                {subject.name}
+                            </Text>
+                            {isExtra && (
+                                <View style={[styles.extraTag, { backgroundColor: theme.colors.primary + '20' }]}>
+                                    <Text style={[styles.extraTagText, { color: theme.colors.primary }]}>EXTRA</Text>
+                                </View>
+                            )}
+                        </View>
+                    </View>
+                    <View style={styles.headerActions}>
+                        {isMarked && (
+                            <IconButton
+                                icon="close-circle-outline"
+                                size={18}
+                                onPress={onClear}
+                                iconColor={theme.colors.onSurfaceVariant}
+                            />
+                        )}
+                        {isMarked && statusInfo && (
+                            <View style={[styles.statusBadge, { backgroundColor: statusInfo.color + '25', borderColor: statusInfo.color }]}>
+                                <Text style={[styles.statusText, { color: statusInfo.color }]}>
+                                    {statusInfo.label}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+                </View>
+
+                <View style={styles.buttonsRow}>
+                    {[
+                        { key: 'present', label: 'Present', color: theme.colors.attendanceGreen },
+                        { key: 'absent', label: 'Absent', color: theme.colors.attendanceRed },
+                        { key: 'od', label: 'OD', color: '#03DAC6' },
+                        { key: 'cancelled', label: 'Cancel', color: '#A1A1AA' },
+                    ].map(btn => (
+                        <Pressable
+                            key={btn.key}
+                            onPress={() => onMark(btn.key)}
+                            style={[
+                                styles.statusBtn,
+                                {
+                                    backgroundColor: status === btn.key ? btn.color : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                                    borderColor: status === btn.key ? btn.color : 'transparent',
+                                }
+                            ]}
+                        >
+                            <Text style={[styles.statusBtnLabel, { color: status === btn.key ? '#FFF' : theme.colors.onSurfaceVariant, fontWeight: status === btn.key ? 'bold' : '600' }]}>
+                                {btn.label}
+                            </Text>
+                        </Pressable>
+                    ))}
+                </View>
+            </View>
+        </GradientCard>
+    );
+};
+
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
+    container: { flex: 1 },
     calendarContainer: {
-        padding: 16,
-        paddingBottom: 8,
-    },
-    content: {
-        padding: 16,
-    },
-    dateTitle: {
-        marginBottom: 16,
-        fontWeight: 'bold',
-    },
-    subjectCard: {
-        marginBottom: 12,
-    },
-    subjectContent: {
-        padding: 16,
-    },
-    subjectHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    subjectName: {
-        fontWeight: 'bold',
-        flex: 1,
-    },
-    headerActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-    },
-    statusBadge: {
-        width: 32,
-        height: 32,
         borderRadius: 16,
-        justifyContent: 'center',
-        alignItems: 'center',
+        margin: 16,
+        marginBottom: 8,
+        paddingBottom: 8,
         ...shadows.small,
     },
-    statusText: {
-        color: '#FFF',
-        fontWeight: 'bold',
-        fontSize: 16,
-    },
-    buttonContainer: {
+    content: { padding: 16, paddingTop: 4, paddingBottom: 40 },
+    dateHeaderRow: {
         flexDirection: 'row',
-        gap: 12,
-        marginTop: 8,
-    },
-    buttonFlex: { flex: 1 },
-    buttonGradient: {
-        flex: 1,
-        borderRadius: 12,
-    },
-    button: {
-        borderRadius: 12,
-    },
-    buttonLabel: {
-        fontWeight: 'bold',
-    },
-    infoCard: {
-        padding: 32,
-    },
-    infoContent: {
         alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 14,
     },
-    infoEmoji: {
-        fontSize: 48,
-        marginBottom: 12,
-    },
-    infoTitle: {
-        textAlign: 'center',
-        fontWeight: 'bold',
-    },
+    dateTitle: { fontWeight: 'bold' },
+    holidayChip: { borderRadius: 16, borderWidth: 1, borderColor: 'transparent' },
+    infoCard: { borderRadius: 16, padding: 24, alignItems: 'center', marginBottom: 12 },
+    infoContent: { alignItems: 'center' },
+    infoEmoji: { fontSize: 40, marginBottom: 8 },
+    infoTitle: { fontWeight: 'bold', marginBottom: 4, textAlign: 'center' },
+    infoSubtitle: { textAlign: 'center', opacity: 0.8 },
+    lectureCard: { marginBottom: 10, borderRadius: 14 },
+    lectureContent: { padding: 14 },
+    lectureHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+    lectureName: { fontWeight: 'bold' },
+    extraTag: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6 },
+    extraTagText: { fontSize: 9, fontWeight: 'bold' },
+    headerActions: { flexDirection: 'row', alignItems: 'center' },
+    statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, borderWidth: 1 },
+    statusText: { fontSize: 11, fontWeight: 'bold' },
+    buttonsRow: { flexDirection: 'row', gap: 6 },
+    statusBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8, borderWidth: 1 },
+    statusBtnLabel: { fontSize: 11 },
 });
 
 export default CalendarScreen;

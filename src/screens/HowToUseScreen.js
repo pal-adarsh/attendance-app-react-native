@@ -12,45 +12,51 @@ const sections = [
         steps: [
             'Open the app and complete the onboarding screen by entering your name.',
             'Add your subjects using the + button on the Subjects tab.',
-            'Set up your weekly timetable on the Timetable tab.',
+            'Set up your weekly timetable on the Timetable tab, or import one from a classmate using a QR code.',
         ],
     },
     {
-        title: 'Marking Attendance',
+        title: 'Marking Attendance & Class Statuses',
         steps: [
-            'Go to the Today tab to see today\'s lectures based on your timetable.',
-            'Tap the Present or Absent button for each lecture.',
-            'Use the Past Records tab to mark attendance for any past date.',
+            'On the Today tab, mark lectures as Present, Absent, OD (On-Duty / Medical), or Cancelled.',
+            'Cancelled classes do not count against your attendance percentage.',
+            'OD (Duty / Medical Leave) counts as attended so extracurriculars or medical leaves do not drop your percentage.',
+            'Use the "+ Extra Class" button to record extra or compensatory lectures not in your regular timetable.',
         ],
     },
     {
-        title: 'Tracking Progress',
+        title: 'Holidays & Saturday Classes',
         steps: [
-            'View your attendance percentage for each subject on the Subjects tab.',
-            'The Analytics tab shows streaks, weekly trends, and day-of-week stats.',
-            'Use the period filter chips to view stats for this week, this month, or all time.',
+            'Tap "Mark as Holiday" at the top of Today or Calendar tabs on festivals or college days off.',
+            'Turn on "Saturday Active" in Timetable or Settings if your college has working classes on Saturdays.',
         ],
     },
     {
-        title: 'Notes',
+        title: 'Bunk Simulator & Analytics',
         steps: [
-            'Create notes from the Notes tab using the + button.',
-            'Format your notes with bold, italic, bullet lists, and checklists.',
-            'Use labels to organize your notes by topic or subject.',
+            'Open the "Bunk Simulator" in the Analytics tab to simulate how missing or attending classes affects your target % before taking off.',
+            'View current and best streaks, weekly trends, and weekday breakdown.',
+        ],
+    },
+    {
+        title: 'Sharing & Importing Timetables',
+        steps: [
+            'Go to Timetable > Share / Import to display a QR code or share your class schedule with friends.',
+            'Classmates can paste the timetable code to instantly import all subjects and timetable slots in one click.',
+        ],
+    },
+    {
+        title: 'Notes & Tasks',
+        steps: [
+            'Create notes per subject or general notes with instant search, swipe-to-pin, and swipe-to-delete.',
+            'Use the To-Do tab for assignments and study goals with one-tap completion.',
         ],
     },
     {
         title: 'Backup & Restore',
         steps: [
-            'Export your data to a JSON file from Settings > Backup & Restore.',
-            'Keep the file safe — you can import it later to restore all data.',
-        ],
-    },
-    {
-        title: 'Notifications',
-        steps: [
-            'Enable Daily Reminders in Settings to get notified at 5 PM and 10 PM.',
-            'This helps you remember to mark your attendance every day.',
+            'Export your complete data (subjects, timetable, records, notes, todos, and holidays) to a JSON file from Settings.',
+            'Import your backup anytime to restore your data on any device.',
         ],
     },
 ];

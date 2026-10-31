@@ -10,6 +10,8 @@ const THEME_KEY = '@attendance_theme_mode';
 const SCHEMA_VERSION_KEY = '@attendance_schema_version';
 const NOTES_KEY = '@attendance_notes';
 const TODOS_KEY = '@attendance_todos';
+const HOLIDAYS_KEY = '@attendance_holidays';
+const WORKING_DAYS_KEY = '@attendance_working_days';
 
 /**
  * @typedef {Object} Subject
@@ -98,11 +100,14 @@ export const initializeStorage = async () => {
         const defaults = [
             [SUBJECTS_KEY, []],
             [STUDENT_KEY, { name: '', setupComplete: false }],
-            [TIMETABLE_KEY, { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [] }],
+            [TIMETABLE_KEY, { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [] }],
             [RECORDS_KEY, []],
             [THEME_KEY, 'dark'],
             [SCHEMA_VERSION_KEY, String(DATA_SCHEMA_VERSION)],
             [NOTES_KEY, []],
+            [TODOS_KEY, []],
+            [HOLIDAYS_KEY, []],
+            [WORKING_DAYS_KEY, ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']],
         ];
 
         const keys = defaults.map(([k]) => k);
@@ -221,8 +226,9 @@ export const StorageService = {
         const records = await this.loadAttendanceRecords();
         const subjectRecords = records.filter(r => r.subjectId === subjectId);
 
-        const recordsAttended = subjectRecords.filter(r => r.status === 'present').length;
-        const recordsTotal = subjectRecords.length;
+        // 'od' counts as attended; 'cancelled' is excluded from both attended and total
+        const recordsAttended = subjectRecords.filter(r => r.status === 'present' || r.status === 'od').length;
+        const recordsTotal = subjectRecords.filter(r => r.status === 'present' || r.status === 'absent' || r.status === 'od').length;
 
         const updatedSubjects = subjects.map(s => {
             if (s.id !== subjectId) return s;
@@ -285,12 +291,18 @@ export const StorageService = {
     async loadTimetable() {
         try {
             const jsonValue = await AsyncStorage.getItem(TIMETABLE_KEY);
-            return jsonValue != null ? JSON.parse(jsonValue) : {
-                Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: []
+            const parsed = jsonValue != null ? JSON.parse(jsonValue) : {};
+            return {
+                Monday: parsed.Monday || [],
+                Tuesday: parsed.Tuesday || [],
+                Wednesday: parsed.Wednesday || [],
+                Thursday: parsed.Thursday || [],
+                Friday: parsed.Friday || [],
+                Saturday: parsed.Saturday || [],
             };
         } catch (e) {
             console.error('Failed to load timetable', e);
-            return { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [] };
+            return { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [] };
         }
     },
 
@@ -331,29 +343,124 @@ export const StorageService = {
         return records.find(r => r.date === date && r.subjectId === subjectId) || null;
     },
 
-    async updateAttendanceRecord(date, subjectId, status) {
+    async updateAttendanceRecord(date, subjectId, status, recordId = null, isExtra = false) {
         return enqueueRecordsWrite(async () => {
             const records = await this.loadAttendanceRecords();
-            const existingIndex = records.findIndex(
-                r => r.date === date && r.subjectId === subjectId
-            );
+            let existingIndex = -1;
+
+            if (recordId) {
+                existingIndex = records.findIndex(r => r.id === recordId);
+            } else {
+                existingIndex = records.findIndex(
+                    r => r.date === date && r.subjectId === subjectId && !r.isExtra
+                );
+            }
+
             if (existingIndex >= 0) {
                 records[existingIndex].status = status;
             } else {
-                records.push({ date, subjectId, status });
+                records.push({
+                    id: recordId || `${date}_${subjectId}_${Date.now()}`,
+                    date,
+                    subjectId,
+                    status,
+                    isExtra: Boolean(isExtra),
+                });
             }
             await this.saveAttendanceRecords(records);
             return records;
         });
     },
 
-    async removeAttendanceRecord(date, subjectId) {
+    async addExtraAttendanceRecord(date, subjectId, status) {
+        const id = `${date}_${subjectId}_extra_${Date.now()}`;
+        return this.updateAttendanceRecord(date, subjectId, status, id, true);
+    },
+
+    async removeAttendanceRecord(date, subjectId, recordId = null) {
         return enqueueRecordsWrite(async () => {
             const records = await this.loadAttendanceRecords();
-            const newRecords = records.filter(r => !(r.date === date && r.subjectId === subjectId));
+            let newRecords;
+            if (recordId) {
+                newRecords = records.filter(r => r.id !== recordId);
+            } else {
+                newRecords = records.filter(r => !(r.date === date && r.subjectId === subjectId));
+            }
             await this.saveAttendanceRecords(newRecords);
             return newRecords;
         });
+    },
+
+    // ========== HOLIDAYS ==========
+    async loadHolidays() {
+        try {
+            const jsonValue = await AsyncStorage.getItem(HOLIDAYS_KEY);
+            return jsonValue != null ? JSON.parse(jsonValue) : [];
+        } catch (e) {
+            console.error('Failed to load holidays', e);
+            return [];
+        }
+    },
+
+    async saveHolidays(holidays) {
+        try {
+            await AsyncStorage.setItem(HOLIDAYS_KEY, JSON.stringify(holidays));
+        } catch (e) {
+            console.error('Failed to save holidays', e);
+        }
+    },
+
+    async isHoliday(date) {
+        const holidays = await this.loadHolidays();
+        return holidays.some(h => (typeof h === 'string' ? h === date : h.date === date));
+    },
+
+    async toggleHoliday(date, label = 'Holiday / College Off') {
+        const holidays = await this.loadHolidays();
+        const exists = holidays.some(h => (typeof h === 'string' ? h === date : h.date === date));
+        let updated;
+        if (exists) {
+            updated = holidays.filter(h => (typeof h === 'string' ? h !== date : h.date !== date));
+        } else {
+            updated = [...holidays, { date, label }];
+        }
+        await this.saveHolidays(updated);
+        return { isHoliday: !exists, holidays: updated };
+    },
+
+    // ========== WORKING DAYS & SATURDAY ==========
+    async loadWorkingDays() {
+        try {
+            const jsonValue = await AsyncStorage.getItem(WORKING_DAYS_KEY);
+            return jsonValue != null ? JSON.parse(jsonValue) : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        } catch (e) {
+            console.error('Failed to load working days', e);
+            return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        }
+    },
+
+    async saveWorkingDays(days) {
+        try {
+            await AsyncStorage.setItem(WORKING_DAYS_KEY, JSON.stringify(days));
+        } catch (e) {
+            console.error('Failed to save working days', e);
+        }
+    },
+
+    async isSaturdayEnabled() {
+        const days = await this.loadWorkingDays();
+        return days.includes('Saturday');
+    },
+
+    async setSaturdayEnabled(enabled) {
+        let days = await this.loadWorkingDays();
+        if (enabled && !days.includes('Saturday')) {
+            days = [...days, 'Saturday'];
+        } else if (!enabled) {
+            days = days.filter(d => d !== 'Saturday');
+        }
+        await this.saveWorkingDays(days);
+        return days;
     },
 
     // ========== THEME ==========
@@ -526,20 +633,23 @@ export const StorageService = {
 
     // ========== EXPORT / IMPORT ==========
 
-    EXPORT_VERSION: 1,
+    EXPORT_VERSION: 2,
 
     async exportAllData() {
-        const [subjects, studentProfile, timetable, attendanceRecords, notes] = await Promise.all([
+        const [subjects, studentProfile, timetable, attendanceRecords, notes, todos, holidays, workingDays] = await Promise.all([
             this.loadSubjects(),
             this.loadStudentProfile(),
             this.loadTimetable(),
             this.loadAttendanceRecords(),
             this.loadNotes(),
+            this.loadTodos(),
+            this.loadHolidays(),
+            this.loadWorkingDays(),
         ]);
         return {
             version: this.EXPORT_VERSION,
             exportedAt: new Date().toISOString(),
-            data: { subjects, studentProfile, timetable, attendanceRecords, notes },
+            data: { subjects, studentProfile, timetable, attendanceRecords, notes, todos, holidays, workingDays },
         };
     },
 
@@ -550,7 +660,7 @@ export const StorageService = {
         if (!backup.version || backup.version > this.EXPORT_VERSION) {
             throw new Error('Unsupported backup version');
         }
-        const { subjects, studentProfile, timetable, attendanceRecords, notes } = backup.data;
+        const { subjects, studentProfile, timetable, attendanceRecords, notes, todos, holidays, workingDays } = backup.data;
 
         if (subjects !== undefined) {
             await this.saveSubjects(subjects);
@@ -567,6 +677,15 @@ export const StorageService = {
         if (notes !== undefined) {
             await this.saveNotes(notes);
         }
+        if (todos !== undefined) {
+            await this.saveTodos(todos);
+        }
+        if (holidays !== undefined) {
+            await this.saveHolidays(holidays);
+        }
+        if (workingDays !== undefined) {
+            await this.saveWorkingDays(workingDays);
+        }
     },
 
     /**
@@ -576,7 +695,8 @@ export const StorageService = {
         try {
             await AsyncStorage.multiRemove([
                 SUBJECTS_KEY, STUDENT_KEY, TIMETABLE_KEY, RECORDS_KEY,
-                THEME_KEY, SCHEMA_VERSION_KEY, NOTES_KEY, INIT_FLAG_KEY,
+                THEME_KEY, SCHEMA_VERSION_KEY, NOTES_KEY, TODOS_KEY,
+                HOLIDAYS_KEY, WORKING_DAYS_KEY, INIT_FLAG_KEY,
             ]);
         } catch (e) {
             console.error('Failed to clear data', e);

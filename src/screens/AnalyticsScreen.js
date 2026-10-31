@@ -1,12 +1,13 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, useTheme, IconButton, Chip } from 'react-native-paper';
+import { Text, useTheme, IconButton, Chip, Button } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import GradientCard from '../components/GradientCard';
 import AnimatedProgressBar from '../components/AnimatedProgressBar';
+import BunkSimulatorModal from '../components/BunkSimulatorModal';
 import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import { toLocalDateString } from '../utils/dateUtils';
@@ -70,6 +71,7 @@ const AnalyticsScreen = ({ navigation }) => {
     const [allSubjects, setAllSubjects] = useState([]);
     const [allRecords, setAllRecords] = useState([]);
     const [period, setPeriod] = useState('all');
+    const [simulatorVisible, setSimulatorVisible] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -131,22 +133,23 @@ const AnalyticsScreen = ({ navigation }) => {
     const subjects = useMemo(() => {
         const subjectRecords = {};
         for (const r of filteredRecords) {
+            if (r.status === 'cancelled') continue;
             if (!subjectRecords[r.subjectId]) subjectRecords[r.subjectId] = [];
             subjectRecords[r.subjectId].push(r);
         }
         return allSubjects.map(s => {
             const sRecords = subjectRecords[s.id] || [];
-            const sAttended = sRecords.filter(r => r.status === 'present').length;
+            const sAttended = sRecords.filter(r => r.status === 'present' || r.status === 'od').length;
             const sTotal = sRecords.length;
-            const baselineAttended = s.baselineAttended ?? 0;
-            const baselineTotal = s.baselineTotal ?? 0;
+            const baselineAttended = period === 'all' ? (s.baselineAttended ?? 0) : 0;
+            const baselineTotal = period === 'all' ? (s.baselineTotal ?? 0) : 0;
             return {
                 ...s,
                 attended: baselineAttended + sAttended,
                 total: baselineTotal + sTotal,
             };
         });
-    }, [allSubjects, filteredRecords]);
+    }, [allSubjects, filteredRecords, period]);
 
     const overallStats = useMemo(() => {
         const totalAttended = subjects.reduce((sum, s) => sum + s.attended, 0);
@@ -267,8 +270,45 @@ const AnalyticsScreen = ({ navigation }) => {
                     </LinearGradient>
                 </Animated.View>
 
+                {/* Bunk Simulator Action Banner */}
+                <Animated.View entering={FadeInDown.duration(600).delay(80)}>
+                    <GradientCard
+                        gradient={isDark ? ['#3B1F5E', '#201235'] : ['#EDE9FE', '#DDD6FE']}
+                        style={styles.simulatorCard}
+                        onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setSimulatorVisible(true);
+                        }}
+                    >
+                        <View style={styles.simulatorContent}>
+                            <View style={{ flex: 1, marginRight: 12 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Text style={{ fontSize: 20, marginRight: 6 }}>🎯</Text>
+                                    <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.text }}>
+                                        Bunk Simulator
+                                    </Text>
+                                </View>
+                                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
+                                    Simulate skipping or attending future classes before taking off.
+                                </Text>
+                            </View>
+                            <Button
+                                mode="contained"
+                                onPress={() => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    setSimulatorVisible(true);
+                                }}
+                                style={{ borderRadius: 12, backgroundColor: theme.colors.primary }}
+                                labelStyle={{ fontSize: 12, fontWeight: 'bold', color: '#FFF' }}
+                            >
+                                Simulate
+                            </Button>
+                        </View>
+                    </GradientCard>
+                </Animated.View>
+
                 {/* Streak Cards */}
-                <Animated.View entering={FadeInDown.duration(600).delay(100)}>
+                <Animated.View entering={FadeInDown.duration(600).delay(120)}>
                     <View style={styles.streakRow}>
                         <LinearGradient colors={gradients.primary} style={[styles.streakCard, shadows.small]}>
                             <Text variant="displaySmall" style={styles.streakValue}>
@@ -429,6 +469,11 @@ const AnalyticsScreen = ({ navigation }) => {
                 )}
             </ScrollView>
 
+            <BunkSimulatorModal
+                visible={simulatorVisible}
+                onDismiss={() => setSimulatorVisible(false)}
+                subjects={allSubjects}
+            />
         </LinearGradient>
     );
 };
@@ -436,6 +481,17 @@ const AnalyticsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     scrollContent: { padding: 16 },
+    simulatorBanner: {
+        marginBottom: 16,
+    },
+    simulatorCard: {
+        borderRadius: 16,
+    },
+    simulatorContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+    },
     filterRow: {
         flexDirection: 'row', marginBottom: 16, gap: 8,
     },

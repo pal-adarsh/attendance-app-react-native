@@ -29,6 +29,7 @@ const NoteEditorScreen = ({ route, navigation }) => {
     const [subjectName, setSubjectName] = useState('');
     const [showCount, setShowCount] = useState(false);
 
+    const isLoadedRef = useRef(!noteId);
     const debounceRef = useRef(null);
     const bodyRef = useRef(null);
     const noteIdRef = useRef(noteId || null);
@@ -51,23 +52,30 @@ const NoteEditorScreen = ({ route, navigation }) => {
             }
             return () => {
                 if (debounceRef.current) clearTimeout(debounceRef.current);
-                saveImmediate();
+                if (isLoadedRef.current) saveImmediate();
             };
         }, [noteId, routeSubjectId])
     );
 
     const loadNote = async () => {
         try {
-            if (!noteId) return;
+            if (!noteId) {
+                isLoadedRef.current = true;
+                return;
+            }
             const notes = await StorageService.loadNotes();
             const note = notes.find(n => n.id === noteId);
-            if (!note) return;
+            if (!note) {
+                isLoadedRef.current = true;
+                return;
+            }
 
             setTitle(note.title || '');
             setBody(note.body || '');
             setPinned(note.pinned || false);
             noteIdRef.current = note.id;
             setIsEditing(true);
+            isLoadedRef.current = true;
 
             if (note.subjectId) {
                 StorageService.loadSubjects().then(subs => {
@@ -79,11 +87,14 @@ const NoteEditorScreen = ({ route, navigation }) => {
             navigation.setOptions({ title: note.title || 'Edit Note' });
         } catch (e) {
             console.error('Failed to load note', e);
+            isLoadedRef.current = true;
         }
     };
 
     const saveImmediate = async () => {
         try {
+            if (!isLoadedRef.current) return; // Prevent deleting or saving before load finishes
+
             const trimmedTitle = titleRef.current.trim();
             const trimmedBody = bodyRefForSave.current.trim();
             const isEmpty = !trimmedTitle && !trimmedBody;
