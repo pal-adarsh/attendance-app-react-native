@@ -35,7 +35,7 @@ const SplashLoader = () => {
   return (
     <LinearGradient colors={backgroundGradient} style={styles.container}>
       <View style={styles.logoWrapper}>
-        <Animated.View style={[styles.glowRing, { backgroundColor: theme.dark ? 'rgba(187, 134, 252, 0.2)' : 'rgba(109, 40, 217, 0.12)' }, glowStyle]} />
+        <Animated.View style={[styles.glowRing, { backgroundColor: theme.colors.tabIndicatorGlow || (theme.colors.primary + '20') }, glowStyle]} />
         <Animated.View style={[styles.logoCircle, { backgroundColor: theme.colors.surface, borderColor: theme.colors.cardBorder }, logoStyle]}>
           <Image source={require('../../assets/icon.png')} style={styles.appIcon} />
         </Animated.View>

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, Pressable, Dimensions } from 'react-native';
 import { Modal, Portal, Text, useTheme, IconButton, Chip } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useThemeContext } from '../utils/ThemeContext';
@@ -103,7 +104,7 @@ const BunkSimulatorModal = ({ visible, onDismiss, subjects = [] }) => {
             <View style={styles.header}>
               <View style={{ flex: 1 }}>
                 <Text variant="titleLarge" style={[styles.title, { color: theme.colors.text }]}>
-                  🎯 Bunk Simulator
+                  Bunk Simulator
                 </Text>
                 <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
                   Calculate future attendance before taking off
@@ -147,7 +148,7 @@ const BunkSimulatorModal = ({ visible, onDismiss, subjects = [] }) => {
                   }}
                   showSelectedCheck={false}
                 >
-                  📊 Overall
+                  Overall
                 </Chip>
                 {subjects.map(s => (
                   <Chip
@@ -212,7 +213,7 @@ const BunkSimulatorModal = ({ visible, onDismiss, subjects = [] }) => {
                   style={[styles.toggleBtn, mode === 'bunk' && { backgroundColor: theme.colors.error, ...shadows.small }]}
                 >
                   <Text style={[styles.toggleText, { color: mode === 'bunk' ? '#FFF' : theme.colors.onSurfaceVariant, fontWeight: mode === 'bunk' ? 'bold' : '600' }]}>
-                    🛌 If I Bunk (Skip)
+                    If I Bunk (Skip)
                   </Text>
                 </Pressable>
                 <Pressable
@@ -220,7 +221,7 @@ const BunkSimulatorModal = ({ visible, onDismiss, subjects = [] }) => {
                   style={[styles.toggleBtn, mode === 'attend' && { backgroundColor: theme.colors.attendanceGreen, ...shadows.small }]}
                 >
                   <Text style={[styles.toggleText, { color: mode === 'attend' ? '#FFF' : theme.colors.onSurfaceVariant, fontWeight: mode === 'attend' ? 'bold' : '600' }]}>
-                    📚 If I Attend
+                    If I Attend
                   </Text>
                 </Pressable>
               </View>
@@ -287,9 +288,12 @@ const BunkSimulatorModal = ({ visible, onDismiss, subjects = [] }) => {
                 }
               ]}>
                 <View style={styles.resultHeader}>
-                  <Text style={styles.resultEmoji}>
-                    {simulation.isSafe ? '✅' : '⚠️'}
-                  </Text>
+                  <MaterialCommunityIcons
+                    name={simulation.isSafe ? "check-circle" : "alert-circle"}
+                    size={26}
+                    color={simulation.isSafe ? theme.colors.attendanceGreen : theme.colors.attendanceRed}
+                    style={{ marginRight: 10 }}
+                  />
                   <View style={{ flex: 1 }}>
                     <Text variant="titleMedium" style={{ fontWeight: 'bold', color: simulation.isSafe ? theme.colors.attendanceGreen : theme.colors.attendanceRed }}>
                       {simulation.isSafe ? 'You are Safe!' : 'Attendance Shortage!'}
@@ -327,7 +331,7 @@ const BunkSimulatorModal = ({ visible, onDismiss, subjects = [] }) => {
                 {!simulation.isSafe && (
                   <View style={styles.recoveryNotice}>
                     <Text variant="labelSmall" style={{ color: theme.colors.attendanceRed, fontWeight: '600' }}>
-                      💡 You would need to attend {getLecturesNeeded(simulation.newAttended, simulation.newTotal, selectedStats.target)} classes without missing any to restore {selectedStats.target}%.
+                      You need to attend {getLecturesNeeded(simulation.newAttended, simulation.newTotal, selectedStats.target)} classes without missing any to restore {selectedStats.target}%.
                     </Text>
                   </View>
                 )}

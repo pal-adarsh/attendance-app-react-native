@@ -467,10 +467,10 @@ export const StorageService = {
     async loadThemeMode() {
         try {
             const value = await AsyncStorage.getItem(THEME_KEY);
-            return value !== null ? value : 'dark';
+            return value !== null ? value : 'light';
         } catch (e) {
             console.error('Failed to load theme mode', e);
-            return 'dark';
+            return 'light';
         }
     },
 

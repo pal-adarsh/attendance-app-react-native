@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Pressable } from 'react-native';
 import { Text, Button, useTheme, IconButton, Chip } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import Animated, { FadeInDown, ZoomIn, useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
@@ -188,7 +189,7 @@ const DailyAttendanceScreen = () => {
                     <View style={styles.headerTop}>
                         <View style={{ flex: 1 }}>
                             <Text variant="headlineMedium" style={[styles.greeting, { color: theme.colors.text }]}>
-                                Hello, {studentName}! 👋
+                                Hello, {studentName}!
                             </Text>
                             <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
                                 {formatLocalDate(toLocalDateString())}
@@ -199,7 +200,7 @@ const DailyAttendanceScreen = () => {
                     {/* Quick Day Controls Bar */}
                     <View style={styles.actionsBar}>
                         <Chip
-                            icon={isHoliday ? 'weather-sunny' : 'palm-tree'}
+                            icon={isHoliday ? 'weather-sunny' : 'calendar-star'}
                             selected={isHoliday}
                             onPress={toggleHoliday}
                             style={[
@@ -212,7 +213,7 @@ const DailyAttendanceScreen = () => {
                                 fontSize: 12,
                             }}
                         >
-                            {isHoliday ? '🌴 Holiday Active' : 'Mark as Holiday'}
+                            {isHoliday ? 'Holiday Active' : 'Mark as Holiday'}
                         </Chip>
 
                         <Chip
@@ -221,7 +222,7 @@ const DailyAttendanceScreen = () => {
                             style={styles.actionChip}
                             textStyle={{ color: theme.colors.primary, fontWeight: 'bold', fontSize: 12 }}
                         >
-                            + Extra Class
+                            Extra Class
                         </Chip>
                     </View>
                 </Animated.View>
@@ -230,7 +231,7 @@ const DailyAttendanceScreen = () => {
                 {isHoliday ? (
                     <Animated.View entering={FadeInDown.duration(500)} style={styles.holidayBanner}>
                         <LinearGradient colors={isDark ? gradients.darkCard : gradients.lightCard} style={styles.holidayCard}>
-                            <Text style={styles.holidayEmoji}>🌴</Text>
+                            <MaterialCommunityIcons name="island" size={36} color={theme.colors.attendanceYellow} style={{ marginBottom: 8 }} />
                             <Text variant="titleLarge" style={[styles.holidayTitle, { color: theme.colors.text }]}>
                                 Today is a Holiday / Off
                             </Text>
@@ -282,7 +283,7 @@ const DailyAttendanceScreen = () => {
                                             <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>Absent</Text>
                                         </View>
                                         <View style={styles.summaryStat}>
-                                            <Text style={[styles.summaryStatValue, { color: '#03DAC6' }]}>
+                                            <Text style={[styles.summaryStatValue, { color: theme.colors.attendanceOD || '#D97706' }]}>
                                                 {Object.values(attendanceStatus).filter(s => s === 'od').length + extraRecords.filter(r => r.status === 'od').length}
                                             </Text>
                                             <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>OD / Duty</Text>
@@ -303,7 +304,7 @@ const DailyAttendanceScreen = () => {
                             <Animated.View entering={FadeInDown.delay(150).duration(500)}>
                                 <GradientCard gradient={cardGradient} style={styles.emptyCard}>
                                     <View style={styles.emptyContent}>
-                                        <Text style={styles.emptyEmoji}>🎉</Text>
+                                        <MaterialCommunityIcons name="weather-sunny" size={40} color={theme.colors.primary} style={{ marginBottom: 8 }} />
                                         <Text variant="titleLarge" style={[styles.emptyTitle, { color: theme.colors.text }]}>
                                             {isSaturday() ? "It's Saturday!" : "It's Sunday!"}
                                         </Text>
@@ -330,7 +331,7 @@ const DailyAttendanceScreen = () => {
                             <Animated.View entering={FadeInDown.delay(150).duration(500)}>
                                 <GradientCard gradient={cardGradient} style={styles.emptyCard}>
                                     <View style={styles.emptyContent}>
-                                        <Text style={styles.emptyEmoji}>📅</Text>
+                                        <MaterialCommunityIcons name="calendar-blank-outline" size={40} color={theme.colors.onSurfaceVariant} style={{ marginBottom: 8 }} />
                                         <Text variant="titleLarge" style={[styles.emptyTitle, { color: theme.colors.text }]}>
                                             No lectures scheduled today
                                         </Text>
@@ -411,10 +412,10 @@ const LectureCard = ({ subject, status, index, isDark, theme, cardGradient, isEx
 
     const getStatusInfo = (st) => {
         switch (st) {
-            case 'present': return { label: '✓ Present', color: theme.colors.attendanceGreen };
-            case 'absent': return { label: '✗ Absent', color: theme.colors.attendanceRed };
-            case 'od': return { label: '🛡️ OD / Duty', color: '#03DAC6' };
-            case 'cancelled': return { label: '🚫 Cancelled', color: '#A1A1AA' };
+            case 'present': return { label: 'Present', color: theme.colors.attendanceGreen };
+            case 'absent': return { label: 'Absent', color: theme.colors.attendanceRed };
+            case 'od': return { label: 'On Duty (OD)', color: theme.colors.attendanceOD || '#D97706' };
+            case 'cancelled': return { label: 'Cancelled', color: '#A1A1AA' };
             default: return null;
         }
     };
@@ -483,7 +484,7 @@ const LectureCard = ({ subject, status, index, isDark, theme, cardGradient, isEx
                         <StatusBtn
                             label="OD / Duty"
                             active={status === 'od'}
-                            activeColor="#03DAC6"
+                            activeColor={theme.colors.attendanceOD || '#D97706'}
                             isDark={isDark}
                             theme={theme}
                             onPress={() => onMark('od')}

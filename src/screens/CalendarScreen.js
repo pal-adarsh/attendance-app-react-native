@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Pressable } from 'react-native';
 import { Text, useTheme, IconButton, Chip } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
@@ -205,17 +206,17 @@ const CalendarScreen = () => {
                         theme={{
                             backgroundColor: 'transparent',
                             calendarBackground: 'transparent',
-                            textSectionTitleColor: isDark ? '#E2E8F0' : '#1E293B',
-                            textSectionTitleDisabledColor: isDark ? '#666' : '#94A3B8',
+                            textSectionTitleColor: theme.colors.text,
+                            textSectionTitleDisabledColor: theme.colors.onSurfaceVariant + '70',
                             selectedDayBackgroundColor: theme.colors.primary,
                             selectedDayTextColor: '#FFF',
-                            todayBackgroundColor: isDark ? 'rgba(187,134,252,0.15)' : 'rgba(109,40,217,0.1)',
+                            todayBackgroundColor: theme.colors.primary + '20',
                             todayTextColor: theme.colors.primary,
-                            dayTextColor: isDark ? '#E2E8F0' : '#1E293B',
-                            textDisabledColor: isDark ? '#444' : '#CBD5E1',
-                            monthTextColor: isDark ? '#E2E8F0' : '#1E293B',
+                            dayTextColor: theme.colors.text,
+                            textDisabledColor: isDark ? '#554B41' : '#D1C7BA',
+                            monthTextColor: theme.colors.text,
                             arrowColor: theme.colors.primary,
-                            disabledArrowColor: isDark ? '#444' : '#CBD5E1',
+                            disabledArrowColor: isDark ? '#554B41' : '#D1C7BA',
                             textDayFontWeight: '500',
                             textMonthFontWeight: 'bold',
                             textDayHeaderFontWeight: '600',
@@ -249,14 +250,14 @@ const CalendarScreen = () => {
                                 fontWeight: isSelectedDateHoliday ? 'bold' : 'normal',
                             }}
                         >
-                            {isSelectedDateHoliday ? '🌴 Holiday' : 'Set Holiday'}
+                            {isSelectedDateHoliday ? 'Holiday' : 'Set Holiday'}
                         </Chip>
                     </View>
 
                     {isSelectedDateHoliday ? (
                         <GradientCard gradient={cardGradient} style={styles.infoCard}>
                             <View style={styles.infoContent}>
-                                <Text style={styles.infoEmoji}>🌴</Text>
+                                <MaterialCommunityIcons name="island" size={32} color={theme.colors.attendanceYellow} style={{ marginBottom: 6 }} />
                                 <Text variant="titleMedium" style={[styles.infoTitle, { color: theme.colors.text }]}>
                                     Marked as Holiday / College Off
                                 </Text>
@@ -268,7 +269,7 @@ const CalendarScreen = () => {
                     ) : isFuture ? (
                         <GradientCard gradient={cardGradient} style={styles.infoCard}>
                             <View style={styles.infoContent}>
-                                <Text style={styles.infoEmoji}>🚫</Text>
+                                <MaterialCommunityIcons name="clock-alert-outline" size={32} color={theme.colors.onSurfaceVariant} style={{ marginBottom: 6 }} />
                                 <Text variant="titleMedium" style={[styles.infoTitle, { color: theme.colors.text }]}>
                                     Cannot mark attendance for future dates
                                 </Text>
@@ -277,7 +278,7 @@ const CalendarScreen = () => {
                     ) : isWeekend && dateSubjects.length === 0 ? (
                         <GradientCard gradient={cardGradient} style={styles.infoCard}>
                             <View style={styles.infoContent}>
-                                <Text style={styles.infoEmoji}>🎉</Text>
+                                <MaterialCommunityIcons name="weather-sunny" size={32} color={theme.colors.primary} style={{ marginBottom: 6 }} />
                                 <Text variant="titleMedium" style={[styles.infoTitle, { color: theme.colors.text }]}>
                                     Weekend Day
                                 </Text>
@@ -289,7 +290,7 @@ const CalendarScreen = () => {
                     ) : dateSubjects.length === 0 && extraRecords.length === 0 ? (
                         <GradientCard gradient={cardGradient} style={styles.infoCard}>
                             <View style={styles.infoContent}>
-                                <Text style={styles.infoEmoji}>📅</Text>
+                                <MaterialCommunityIcons name="calendar-blank-outline" size={32} color={theme.colors.onSurfaceVariant} style={{ marginBottom: 6 }} />
                                 <Text variant="titleMedium" style={[styles.infoTitle, { color: theme.colors.text }]}>
                                     No classes on this day
                                 </Text>
@@ -350,10 +351,10 @@ const PastLectureCard = ({ subject, status, theme, isDark, cardGradient, isExtra
 
     const getStatusInfo = (st) => {
         switch (st) {
-            case 'present': return { label: '✓ Present', color: theme.colors.attendanceGreen };
-            case 'absent': return { label: '✗ Absent', color: theme.colors.attendanceRed };
-            case 'od': return { label: '🛡️ OD / Duty', color: '#03DAC6' };
-            case 'cancelled': return { label: '🚫 Cancelled', color: '#A1A1AA' };
+            case 'present': return { label: 'Present', color: theme.colors.attendanceGreen };
+            case 'absent': return { label: 'Absent', color: theme.colors.attendanceRed };
+            case 'od': return { label: 'On Duty (OD)', color: theme.colors.attendanceOD || '#D97706' };
+            case 'cancelled': return { label: 'Cancelled', color: '#A1A1AA' };
             default: return null;
         }
     };
@@ -399,7 +400,7 @@ const PastLectureCard = ({ subject, status, theme, isDark, cardGradient, isExtra
                     {[
                         { key: 'present', label: 'Present', color: theme.colors.attendanceGreen },
                         { key: 'absent', label: 'Absent', color: theme.colors.attendanceRed },
-                        { key: 'od', label: 'OD', color: '#03DAC6' },
+                        { key: 'od', label: 'OD', color: theme.colors.attendanceOD || '#D97706' },
                         { key: 'cancelled', label: 'Cancel', color: '#A1A1AA' },
                     ].map(btn => (
                         <Pressable

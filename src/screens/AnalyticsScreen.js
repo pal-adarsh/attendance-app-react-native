@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, useTheme, IconButton, Chip, Button } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
@@ -273,7 +274,7 @@ const AnalyticsScreen = ({ navigation }) => {
                 {/* Bunk Simulator Action Banner */}
                 <Animated.View entering={FadeInDown.duration(600).delay(80)}>
                     <GradientCard
-                        gradient={isDark ? ['#3B1F5E', '#201235'] : ['#EDE9FE', '#DDD6FE']}
+                        gradient={isDark ? ['#3D1E0E', '#251208'] : ['#FFEDD5', '#FED7AA']}
                         style={styles.simulatorCard}
                         onPress={() => {
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -282,12 +283,9 @@ const AnalyticsScreen = ({ navigation }) => {
                     >
                         <View style={styles.simulatorContent}>
                             <View style={{ flex: 1, marginRight: 12 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    <Text style={{ fontSize: 20, marginRight: 6 }}>🎯</Text>
-                                    <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.text }}>
-                                        Bunk Simulator
-                                    </Text>
-                                </View>
+                                <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.text }}>
+                                    Bunk Simulator
+                                </Text>
                                 <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
                                     Simulate skipping or attending future classes before taking off.
                                 </Text>
@@ -391,7 +389,7 @@ const AnalyticsScreen = ({ navigation }) => {
                     <Animated.View entering={FadeInDown.delay(300).duration(500)}>
                         <GradientCard gradient={cardGradient} style={styles.emptyCard}>
                             <View style={styles.emptyContent}>
-                                <Text style={styles.emptyEmoji}>📊</Text>
+                                <MaterialCommunityIcons name="chart-box-outline" size={40} color={theme.colors.onSurfaceVariant} style={{ marginBottom: 8 }} />
                                 <Text variant="titleMedium" style={styles.emptyTitle}>
                                     No subjects added yet
                                 </Text>

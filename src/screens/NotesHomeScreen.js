@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { View, StyleSheet, FlatList, Alert, Share, Pressable, TextInput as RNTextInput } from 'react-native';
 import { Text, useTheme, IconButton, Searchbar, Menu, Chip } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Animated, { FadeInDown, Layout, FadeIn } from 'react-native-reanimated';
@@ -210,18 +211,24 @@ const NotesHomeScreen = ({ route }) => {
 
     const handleAddTodo = useCallback(async () => {
         const text = newTodoText.trim();
-        if (!text) return;
+        if (!text) {
+            todoInputRef.current?.focus();
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            return;
+        }
         try {
             const updated = await StorageService.addTodo(text, initialSubjectId || null);
             setTodos(updated);
             setNewTodoText('');
-            todoInputRef.current?.blur();
+            if (todoFilter === 'completed') {
+                setTodoFilter('all');
+            }
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } catch (e) {
             console.error('Failed to add todo', e);
             Alert.alert('Error', 'Failed to add task: ' + e.message);
         }
-    }, [newTodoText, initialSubjectId]);
+    }, [newTodoText, initialSubjectId, todoFilter]);
 
     const handleToggleTodo = async (id) => {
         try {
@@ -271,7 +278,7 @@ const NotesHomeScreen = ({ route }) => {
 
     const renderSectionHeader = (section) => (
         <View style={styles.sectionHeader}>
-            {section.icon && <Text style={styles.sectionPinIcon}>📌</Text>}
+            {section.icon && <MaterialCommunityIcons name="pin" size={14} color={theme.colors.primary} style={{ marginRight: 4 }} />}
             <Text variant="labelMedium" style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}>
                 {section.title}
             </Text>
@@ -284,7 +291,7 @@ const NotesHomeScreen = ({ route }) => {
                 onPress={() => handleDelete(note)}
                 style={[styles.swipeAction, { backgroundColor: theme.colors.error }]}
             >
-                <Text style={styles.swipeActionIcon}>🗑️</Text>
+                <MaterialCommunityIcons name="delete-outline" size={20} color="#FFF" />
                 <Text style={styles.swipeActionText}>Delete</Text>
             </Pressable>
         );
@@ -296,7 +303,7 @@ const NotesHomeScreen = ({ route }) => {
                 onPress={() => handlePin(note, !note.pinned)}
                 style={[styles.swipeAction, { backgroundColor: theme.colors.primary }]}
             >
-                <Text style={styles.swipeActionIcon}>{note.pinned ? '📌' : '📍'}</Text>
+                <MaterialCommunityIcons name={note.pinned ? "pin-off-outline" : "pin-outline"} size={20} color="#FFF" />
                 <Text style={styles.swipeActionText}>{note.pinned ? 'Unpin' : 'Pin'}</Text>
             </Pressable>
         );
@@ -413,13 +420,13 @@ const NotesHomeScreen = ({ route }) => {
                         onPress={() => { setActiveTab('notes'); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
                         style={[styles.topTabBtn, activeTab === 'notes' && { backgroundColor: theme.colors.primary, ...shadows.small }]}
                     >
-                        <Text style={[styles.topTabText, { color: activeTab === 'notes' ? '#FFF' : theme.colors.onSurfaceVariant, fontWeight: activeTab === 'notes' ? 'bold' : '600' }]}>📝 Notes</Text>
+                        <Text style={[styles.topTabText, { color: activeTab === 'notes' ? '#FFF' : theme.colors.onSurfaceVariant, fontWeight: activeTab === 'notes' ? 'bold' : '600' }]}>Notes</Text>
                     </Pressable>
                     <Pressable
                         onPress={() => { setActiveTab('todo'); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
                         style={[styles.topTabBtn, activeTab === 'todo' && { backgroundColor: theme.colors.primary, ...shadows.small }]}
                     >
-                        <Text style={[styles.topTabText, { color: activeTab === 'todo' ? '#FFF' : theme.colors.onSurfaceVariant, fontWeight: activeTab === 'todo' ? 'bold' : '600' }]}>☑️ To-Do</Text>
+                        <Text style={[styles.topTabText, { color: activeTab === 'todo' ? '#FFF' : theme.colors.onSurfaceVariant, fontWeight: activeTab === 'todo' ? 'bold' : '600' }]}>To-Do</Text>
                     </Pressable>
                 </View>
             </View>
@@ -482,7 +489,7 @@ const NotesHomeScreen = ({ route }) => {
                         contentContainerStyle={styles.listContent}
                         ListEmptyComponent={
                             <Animated.View entering={FadeInDown.duration(500)} style={styles.emptyState}>
-                                <Text style={styles.emptyEmoji}>{searchQuery ? '🔍' : filterMode === 'archived' ? '📦' : '📝'}</Text>
+                                <MaterialCommunityIcons name={searchQuery ? "magnify" : filterMode === 'archived' ? "archive-outline" : "notebook-outline"} size={42} color={theme.colors.onSurfaceVariant} style={{ marginBottom: 8 }} />
                                 <Text variant="titleLarge" style={[styles.emptyTitle, { color: theme.colors.text }]}>{searchQuery ? 'No notes found' : filterMode === 'archived' ? 'No archived notes' : 'No notes yet'}</Text>
                                 <Text variant="bodyMedium" style={[styles.emptySubtitle, { color: theme.colors.onSurfaceVariant }]}>{searchQuery ? 'Try a different search term' : filterMode === 'archived' ? 'Notes you archive will appear here' : 'Create your first note to get started'}</Text>
                                 {!searchQuery && filterMode !== 'archived' && (
@@ -519,13 +526,22 @@ const NotesHomeScreen = ({ route }) => {
                             onSubmitEditing={handleAddTodo}
                             returnKeyType="done"
                             blurOnSubmit={false}
-                            style={[styles.addTodoInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', color: theme.colors.text }]}
+                            style={[
+                                styles.addTodoInput,
+                                {
+                                    backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                                    color: theme.colors.text,
+                                    borderColor: theme.colors.cardBorder,
+                                    borderWidth: 1,
+                                }
+                            ]}
                         />
                         <Pressable
                             onPress={handleAddTodo}
-                            style={[styles.addTodoBtn, { backgroundColor: newTodoText.trim() ? theme.colors.primary : (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)') }]}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            style={[styles.addTodoBtn, { backgroundColor: theme.colors.primary }]}
                         >
-                            <Text style={[styles.addTodoBtnText, { color: newTodoText.trim() ? '#FFF' : theme.colors.onSurfaceVariant }]}>+ Add</Text>
+                            <Text style={styles.addTodoBtnText}>Add</Text>
                         </Pressable>
                     </View>
 
@@ -581,13 +597,12 @@ const NotesHomeScreen = ({ route }) => {
                     <FlatList
                         data={filteredTodos}
                         keyExtractor={item => item.id}
+                        keyboardShouldPersistTaps="handled"
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={styles.listContent}
                         ListEmptyComponent={
                             <Animated.View entering={FadeInDown.duration(500)} style={styles.emptyState}>
-                                <Text style={styles.emptyEmoji}>
-                                    {searchQuery ? '🔍' : todoFilter === 'completed' ? '🎉' : todoFilter === 'active' ? '✨' : '☑️'}
-                                </Text>
+                                <MaterialCommunityIcons name={searchQuery ? "magnify" : todoFilter === 'completed' ? "check-all" : todoFilter === 'active' ? "checkbox-marked-circle-outline" : "checkbox-blank-circle-outline"} size={42} color={theme.colors.onSurfaceVariant} style={{ marginBottom: 8 }} />
                                 <Text variant="titleLarge" style={[styles.emptyTitle, { color: theme.colors.text }]}>
                                     {searchQuery ? 'No tasks found' : todoFilter === 'completed' ? 'No completed tasks' : todoFilter === 'active' ? 'No active tasks' : 'All clear!'}
                                 </Text>
@@ -598,6 +613,18 @@ const NotesHomeScreen = ({ route }) => {
                         }
                         renderItem={({ item }) => renderTodoItem(item)}
                     />
+                    <Pressable
+                        onPress={() => {
+                            todoInputRef.current?.focus();
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }}
+                        style={styles.fab}
+                        accessibilityLabel="Add new task"
+                    >
+                        <LinearGradient colors={gradients.primary} style={[styles.fabGradient, shadows.large]}>
+                            <IconButton icon="plus" size={24} iconColor="#FFF" accessibilityLabel="Add task" />
+                        </LinearGradient>
+                    </Pressable>
                 </View>
             )}
         </LinearGradient>

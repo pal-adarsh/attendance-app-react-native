@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Platform, Alert, Switch, Image, Linking, Pressable } from 'react-native';
 import { Text, TextInput, Button, HelperText, useTheme, IconButton } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -172,7 +173,7 @@ const SettingsScreen = ({ navigation }) => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 toggleTheme();
               }}
-              trackColor={{ false: '#CBD5E1', true: theme.colors.primary }}
+              trackColor={{ false: isDark ? '#3D342C' : '#E2D9CC', true: theme.colors.primary }}
               thumbColor={Platform.OS === 'ios' ? undefined : '#FFF'}
             />
           </View>
@@ -195,7 +196,7 @@ const SettingsScreen = ({ navigation }) => {
                 await setReminderEnabled(val);
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
-              trackColor={{ false: '#CBD5E1', true: theme.colors.primary }}
+              trackColor={{ false: isDark ? '#3D342C' : '#E2D9CC', true: theme.colors.primary }}
               thumbColor={Platform.OS === 'ios' ? undefined : '#FFF'}
             />
           </View>
@@ -218,7 +219,7 @@ const SettingsScreen = ({ navigation }) => {
                 await StorageService.setSaturdayEnabled(val);
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
-              trackColor={{ false: '#CBD5E1', true: theme.colors.primary }}
+              trackColor={{ false: isDark ? '#3D342C' : '#E2D9CC', true: theme.colors.primary }}
               thumbColor={Platform.OS === 'ios' ? undefined : '#FFF'}
             />
           </View>
@@ -325,7 +326,7 @@ const SettingsScreen = ({ navigation }) => {
             Privacy & Data
           </Text>
           <View style={styles.privacyRow}>
-            <Text style={styles.privacyIcon}>🔒</Text>
+            <MaterialCommunityIcons name="shield-lock-outline" size={24} color={theme.colors.primary} style={{ marginRight: 12 }} />
             <View style={styles.privacyInfo}>
               <Text variant="bodyMedium" style={{ color: theme.colors.text, fontWeight: '600' }}>
                 Your data stays on your device
@@ -337,7 +338,7 @@ const SettingsScreen = ({ navigation }) => {
           </View>
           <View style={[styles.divider, { backgroundColor: theme.colors.surfaceVariant, marginVertical: 12 }]} />
           <View style={styles.privacyRow}>
-            <Text style={styles.privacyIcon}>📁</Text>
+            <MaterialCommunityIcons name="folder-outline" size={24} color={theme.colors.primary} style={{ marginRight: 12 }} />
             <View style={styles.privacyInfo}>
               <Text variant="bodyMedium" style={{ color: theme.colors.text, fontWeight: '600' }}>
                 Backup your own data
@@ -364,8 +365,16 @@ const SettingsScreen = ({ navigation }) => {
           </View>
           <View style={[styles.divider, { backgroundColor: theme.colors.surfaceVariant, marginVertical: 12 }]} />
           <View style={styles.creatorLinks}>
+            <Pressable style={styles.creatorLinkRow} onPress={() => Linking.openURL('http://adarshpal.me/')} accessibilityLabel="Portfolio website">
+              <MaterialCommunityIcons name="web" size={22} color={theme.colors.primary} style={{ marginRight: 12 }} />
+              <View style={styles.creatorLinkContent}>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>Portfolio</Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.text, fontWeight: '500' }} numberOfLines={1}>adarshpal.me</Text>
+              </View>
+              <IconButton icon="open-in-new" size={18} iconColor={theme.colors.onSurfaceVariant} />
+            </Pressable>
             <Pressable style={styles.creatorLinkRow} onPress={() => Linking.openURL('https://github.com/pal-adarsh')} accessibilityLabel="GitHub profile">
-              <Text style={styles.creatorLinkIcon}>🐙</Text>
+              <MaterialCommunityIcons name="github" size={22} color={theme.colors.text} style={{ marginRight: 12 }} />
               <View style={styles.creatorLinkContent}>
                 <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>GitHub</Text>
                 <Text variant="bodyMedium" style={{ color: theme.colors.text, fontWeight: '500' }} numberOfLines={1}>pal-adarsh</Text>
@@ -373,7 +382,7 @@ const SettingsScreen = ({ navigation }) => {
               <IconButton icon="open-in-new" size={18} iconColor={theme.colors.onSurfaceVariant} />
             </Pressable>
             <Pressable style={styles.creatorLinkRow} onPress={() => Linking.openURL('mailto:adarsh.r.s.pal@gmail.com')} accessibilityLabel="Email">
-              <Text style={styles.creatorLinkIcon}>📧</Text>
+              <MaterialCommunityIcons name="email-outline" size={22} color={theme.colors.primary} style={{ marginRight: 12 }} />
               <View style={styles.creatorLinkContent}>
                 <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>Email</Text>
                 <Text variant="bodyMedium" style={{ color: theme.colors.text, fontWeight: '500' }} numberOfLines={1}>adarsh.r.s.pal@gmail.com</Text>
@@ -381,7 +390,7 @@ const SettingsScreen = ({ navigation }) => {
               <IconButton icon="open-in-new" size={18} iconColor={theme.colors.onSurfaceVariant} />
             </Pressable>
             <Pressable style={styles.creatorLinkRow} onPress={() => Linking.openURL('https://linkedin.com/in/adarsh-pal-11212b292')} accessibilityLabel="LinkedIn profile">
-              <Text style={styles.creatorLinkIcon}>💼</Text>
+              <MaterialCommunityIcons name="linkedin" size={22} color="#0A66C2" style={{ marginRight: 12 }} />
               <View style={styles.creatorLinkContent}>
                 <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>LinkedIn</Text>
                 <Text variant="bodyMedium" style={{ color: theme.colors.text, fontWeight: '500' }} numberOfLines={1}>Adarsh Pal</Text>

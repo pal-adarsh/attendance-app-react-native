@@ -3,17 +3,17 @@ import { lightTheme, darkTheme } from '../constants/theme';
 import { StorageService } from './storage';
 
 const ThemeContext = createContext({
-  isDark: true,
+  isDark: false,
   toggleTheme: () => {},
-  theme: darkTheme,
+  theme: lightTheme,
 });
 
 export const ThemeProvider = ({ children }) => {
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     StorageService.loadThemeMode().then(saved => {
-      setIsDark(saved !== 'light');
+      setIsDark(saved === 'dark');
     });
   }, []);
 

@@ -32,7 +32,7 @@ const AnimatedProgressBar = ({ progress, colors, height = 8, style }) => {
     <View style={[styles.background, { height, backgroundColor: theme.colors.surfaceVariant }, style]}>
       <Animated.View style={[styles.fill, animatedStyle]}>
         <LinearGradient
-          colors={colors || theme.colors.primaryGradient || ['#BB86FC', '#9C6FE8']}
+          colors={colors || theme.colors.primaryGradient || ['#FB923C', '#EA580C']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={StyleSheet.absoluteFill}

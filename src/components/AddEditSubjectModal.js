@@ -148,7 +148,7 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
               style={styles.modalGradient}
             >
               <Text variant="headlineSmall" style={[styles.title, { color: theme.colors.text }]}>
-                {editingSubject ? '✍️ Edit Subject' : '📚 Add New Subject'}
+                {editingSubject ? 'Edit Subject' : 'Add New Subject'}
               </Text>
 
               <Animated.View style={[styles.inputWrapper, { backgroundColor: inputBgColor }, getFocusStyle(nameFocus)]}>
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: '#1E1E1E',
+    backgroundColor: 'transparent',
     ...shadows.large,
   },
   modalGradient: {

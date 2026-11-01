@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, FlatList, Pressable } from 'react-native';
 import { Text, Chip, useTheme, Button, IconButton } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
@@ -116,13 +117,14 @@ const TimetableScreen = () => {
                     {day.substring(0, 3).toUpperCase()}
                 </Text>
                 <Text
+                    numberOfLines={1}
                     style={[
                         styles.dayTileCount,
                         {
                             color: isSelected
-                                ? 'rgba(255,255,255,0.85)'
-                                : (isSatOff ? theme.colors.attendanceYellow : theme.colors.onSurfaceVariant),
-                            fontWeight: isSelected ? '600' : 'normal',
+                                ? '#FFFFFF'
+                                : (isSatOff ? theme.colors.attendanceYellow : (isDark ? '#D4D4D8' : '#71717A')),
+                            fontWeight: isSelected ? '700' : '500',
                         }
                     ]}
                 >
@@ -188,7 +190,7 @@ const TimetableScreen = () => {
                 {subjects.length === 0 ? (
                     <GradientCard gradient={cardGradient} style={styles.emptyCard}>
                         <View style={styles.emptyContent}>
-                            <Text style={styles.emptyEmoji}>📚</Text>
+                            <MaterialCommunityIcons name="book-open-page-variant-outline" size={44} color={theme.colors.onSurfaceVariant} style={{ marginBottom: 8 }} />
                             <Text variant="titleMedium" style={[styles.emptyTitle, { color: theme.colors.text }]}>
                                 No subjects added yet
                             </Text>
@@ -209,7 +211,7 @@ const TimetableScreen = () => {
                                     layout={Layout.springify()}
                                 >
                                     <GradientCard
-                                        gradient={isSelected ? (isDark ? ['#3B1F5E', '#2B1446'] : ['#EDE9FE', '#DDD6FE']) : cardGradient}
+                                        gradient={isSelected ? (isDark ? ['#3D1E0E', '#2A1408'] : ['#FFEDD5', '#FED7AA']) : cardGradient}
                                         style={[
                                             styles.subjectCard,
                                             isSelected && { borderColor: theme.colors.primary, borderWidth: 1.5 }
@@ -221,7 +223,7 @@ const TimetableScreen = () => {
                                                 <Text variant="titleMedium" style={[styles.subjectName, { color: theme.colors.text }]} numberOfLines={1}>
                                                     {item.name}
                                                 </Text>
-                                                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}>
+                                                <Text variant="bodySmall" style={{ color: isSelected ? (isDark ? '#E4E4E7' : '#334155') : (isDark ? '#A1A1AA' : '#64748B'), marginTop: 2 }}>
                                                     Target: {item.target || 75}% • {item.lecturesPerWeek || 0} lec/week
                                                 </Text>
                                             </View>
@@ -232,7 +234,7 @@ const TimetableScreen = () => {
                                                 isSelected && { backgroundColor: theme.colors.primary }
                                             ]}>
                                                 {isSelected && (
-                                                    <Text style={styles.checkmark}>✓</Text>
+                                                    <MaterialCommunityIcons name="check" size={13} color="#FFF" />
                                                 )}
                                             </View>
                                         </View>
@@ -291,6 +293,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 4,
         borderRadius: 12,
         borderWidth: 1.5,
+        minHeight: 56,
     },
     dayTileName: {
         fontSize: 14,
@@ -298,7 +301,7 @@ const styles = StyleSheet.create({
         marginBottom: 2,
     },
     dayTileCount: {
-        fontSize: 11,
+        fontSize: 11.5,
     },
     content: {
         flex: 1,
@@ -324,7 +327,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     listContent: {
-        paddingBottom: 40,
+        paddingBottom: 120,
     },
     subjectCard: {
         marginBottom: 10,

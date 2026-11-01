@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, Dimensions } from 'react-native';
 import { Modal, Portal, Text, useTheme, IconButton, Button, Chip } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useThemeContext } from '../utils/ThemeContext';
 import { gradients, shadows } from '../constants/theme';
 import { StorageService } from '../utils/storage';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const AddExtraClassModal = ({ visible, onDismiss, date, subjects = [], onSaved }) => {
   const theme = useTheme();
@@ -50,10 +52,10 @@ const AddExtraClassModal = ({ visible, onDismiss, date, subjects = [], onSaved }
             <View style={styles.header}>
               <View style={{ flex: 1 }}>
                 <Text variant="titleLarge" style={[styles.title, { color: theme.colors.text }]}>
-                  ⚡ Add Extra Lecture
+                  Add Extra Lecture
                 </Text>
-                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                  Record an extra or compensatory class for this day
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}>
+                  Record an extra or compensatory class for today
                 </Text>
               </View>
               <IconButton
@@ -73,35 +75,41 @@ const AddExtraClassModal = ({ visible, onDismiss, date, subjects = [], onSaved }
               <Text variant="labelMedium" style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant }]}>
                 SELECT SUBJECT
               </Text>
-              <View style={styles.chipsContainer}>
-                {subjects.map(s => {
-                  const isSelected = activeSubjectId === s.id;
-                  return (
-                    <Chip
-                      key={s.id}
-                      selected={isSelected}
-                      onPress={() => {
-                        setSelectedSubjectId(s.id);
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }}
-                      style={[
-                        styles.subjectChip,
-                        isSelected && {
-                          backgroundColor: theme.colors.primary + '25',
-                          borderColor: theme.colors.primary,
-                        }
-                      ]}
-                      textStyle={{
-                        color: isSelected ? theme.colors.primary : theme.colors.onSurfaceVariant,
-                        fontWeight: isSelected ? 'bold' : 'normal',
-                      }}
-                      showSelectedCheck={false}
-                    >
-                      {s.name}
-                    </Chip>
-                  );
-                })}
-              </View>
+              {subjects.length === 0 ? (
+                <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 13, marginBottom: 12 }}>
+                  No courses added yet. Please add subjects in the Subjects tab first.
+                </Text>
+              ) : (
+                <View style={styles.chipsContainer}>
+                  {subjects.map(s => {
+                    const isSelected = activeSubjectId === s.id;
+                    return (
+                      <Chip
+                        key={s.id}
+                        selected={isSelected}
+                        onPress={() => {
+                          setSelectedSubjectId(s.id);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }}
+                        style={[
+                          styles.subjectChip,
+                          isSelected
+                            ? { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }
+                            : { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: theme.colors.cardBorder }
+                        ]}
+                        textStyle={{
+                          color: isSelected ? '#FFFFFF' : theme.colors.text,
+                          fontWeight: isSelected ? 'bold' : '600',
+                          fontSize: 13,
+                        }}
+                        showSelectedCheck={false}
+                      >
+                        {s.name}
+                      </Chip>
+                    );
+                  })}
+                </View>
+              )}
 
               <Text variant="labelMedium" style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant, marginTop: 14 }]}>
                 ATTENDANCE STATUS
@@ -110,7 +118,7 @@ const AddExtraClassModal = ({ visible, onDismiss, date, subjects = [], onSaved }
                 {[
                   { key: 'present', label: 'Present', icon: 'check-circle', color: theme.colors.attendanceGreen },
                   { key: 'absent', label: 'Absent', icon: 'close-circle', color: theme.colors.attendanceRed },
-                  { key: 'od', label: 'On Duty (OD)', icon: 'shield-check', color: '#03DAC6' },
+                  { key: 'od', label: 'On Duty (OD)', icon: 'shield-check', color: theme.colors.attendanceOD || '#D97706' },
                   { key: 'cancelled', label: 'Cancelled', icon: 'cancel', color: '#A1A1AA' },
                 ].map(item => {
                   const isSelected = selectedStatus === item.key;
@@ -125,7 +133,7 @@ const AddExtraClassModal = ({ visible, onDismiss, date, subjects = [], onSaved }
                         styles.statusBtn,
                         {
                           backgroundColor: isSelected
-                            ? item.color + '20'
+                            ? item.color + '25'
                             : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'),
                           borderColor: isSelected ? item.color : 'transparent',
                         }
@@ -141,8 +149,8 @@ const AddExtraClassModal = ({ visible, onDismiss, date, subjects = [], onSaved }
                         style={[
                           styles.statusBtnText,
                           {
-                            color: isSelected ? item.color : theme.colors.onSurfaceVariant,
-                            fontWeight: isSelected ? 'bold' : 'normal',
+                            color: isSelected ? item.color : theme.colors.text,
+                            fontWeight: isSelected ? 'bold' : '600',
                           }
                         ]}
                       >
@@ -184,12 +192,17 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
     borderWidth: 1,
-    maxHeight: '88%',
+    height: Math.min(SCREEN_HEIGHT * 0.85, 620),
+    display: 'flex',
+    flexDirection: 'column',
   },
   gradientContainer: {
+    flex: 1,
     paddingTop: 18,
     paddingHorizontal: 18,
-    paddingBottom: 12,
+    paddingBottom: 14,
+    display: 'flex',
+    flexDirection: 'column',
   },
   header: {
     flexDirection: 'row',
@@ -201,10 +214,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   scrollArea: {
-    maxHeight: 320,
+    flex: 1,
   },
   scrollContent: {
-    paddingBottom: 16,
+    paddingBottom: 20,
   },
   sectionLabel: {
     fontSize: 11,
@@ -220,8 +233,7 @@ const styles = StyleSheet.create({
   },
   subjectChip: {
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'transparent',
+    borderWidth: 1.5,
   },
   statusRow: {
     flexDirection: 'row',
@@ -231,19 +243,19 @@ const styles = StyleSheet.create({
   statusBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 1.5,
-    minWidth: '45%',
+    minWidth: '46%',
     flex: 1,
   },
   statusBtnText: {
     fontSize: 13,
-    marginLeft: 4,
+    marginLeft: 6,
   },
   bottomActionBar: {
-    paddingTop: 12,
+    paddingTop: 14,
     marginTop: 4,
     borderTopWidth: 1,
   },

@@ -145,7 +145,7 @@ const ShareTimetableModal = ({ visible, onDismiss, timetable = {}, subjects = []
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
-        'Timetable Imported! 🎉',
+        'Timetable Imported',
         `Successfully imported ${parsed.subjects.length} subjects and your weekly class schedule.`,
         [{
           text: 'Awesome',
@@ -231,9 +231,9 @@ const ShareTimetableModal = ({ visible, onDismiss, timetable = {}, subjects = []
             <View style={styles.header}>
               <View style={{ flex: 1 }}>
                 <Text variant="titleLarge" style={[styles.title, { color: theme.colors.text }]}>
-                  {activeTab === 'share' && '📲 Share Timetable'}
-                  {activeTab === 'scan' && '📷 Scan Friend\'s QR'}
-                  {activeTab === 'paste' && '📋 Paste Timetable'}
+                  {activeTab === 'share' && 'Share Timetable'}
+                  {activeTab === 'scan' && 'Scan Timetable QR'}
+                  {activeTab === 'paste' && 'Paste Timetable Code'}
                 </Text>
                 <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
                   {activeTab === 'share' && 'Show this QR or share link with classmates'}
@@ -295,7 +295,7 @@ const ShareTimetableModal = ({ visible, onDismiss, timetable = {}, subjects = []
                   <View style={[styles.qrWrapper, { backgroundColor: '#FFFFFF', borderColor: theme.colors.cardBorder }]}>
                     {qrLoading && (
                       <View style={styles.qrLoader}>
-                        <ActivityIndicator color="#6D28D9" />
+                        <ActivityIndicator color={theme.colors.primary} />
                       </View>
                     )}
                     <Image

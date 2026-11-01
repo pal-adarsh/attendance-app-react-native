@@ -10,6 +10,7 @@ import {
   Pressable,
 } from 'react-native';
 import { Text, TextInput, useTheme } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -31,52 +32,56 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const SLIDES = [
   {
-    id: 'welcome',
-    emoji: '🎓',
-    gradient: ['#7C3AED', '#A855F7'],
-    title: 'All Your College\nWork, One Place',
-    subtitle: 'Attendance, notes, tasks — everything you need to ace your semester, organized beautifully.',
-    features: null,
-  },
-  {
     id: 'attendance',
-    emoji: '📋',
-    gradient: ['#2563EB', '#7C3AED'],
-    title: 'Smart Attendance\nTracking',
-    subtitle: 'Mark attendance in one tap. Get real-time stats and never miss the 75% threshold again.',
+    icon: 'calendar-check',
+    gradient: ['#FF8533', '#FF6B00'],
+    title: 'Smart Daily Attendance',
+    subtitle: 'Mark lectures with real status types: Present, Absent, On Duty (OD), and Cancelled.',
     features: [
-      { icon: '✅', text: 'One-tap daily attendance' },
-      { icon: '📊', text: 'Analytics & attendance streaks' },
-      { icon: '📅', text: 'Weekly timetable planner' },
+      { text: 'One-tap attendance marking with instant percentage' },
+      { text: 'College Duty (OD) & Cancelled class support' },
+      { text: 'Mark custom working Saturdays & national holidays' },
     ],
   },
   {
-    id: 'notes',
-    emoji: '📝',
-    gradient: ['#059669', '#0D9488'],
-    title: 'Notes That Stay\nOrganized',
-    subtitle: 'Write, pin and archive notes per subject. Search instantly and keep your study material tidy.',
+    id: 'bunk_simulator',
+    icon: 'calculator-variant',
+    gradient: ['#F97316', '#EA580C'],
+    title: 'What-If Bunk Simulator',
+    subtitle: 'Simulate future absences before taking off to ensure you never fall below target.',
     features: [
-      { icon: '📌', text: 'Pin important notes to the top' },
-      { icon: '🔍', text: 'Instant full-text search' },
-      { icon: '🗂️', text: 'Archive to declutter anytime' },
+      { text: 'Simulate bunking 1 to 10+ upcoming lectures' },
+      { text: 'Instant shortage alerts and safe-to-bunk buffer' },
+      { text: 'Calculates exact recovery classes needed' },
     ],
   },
   {
-    id: 'todo',
-    emoji: '☑️',
-    gradient: ['#D97706', '#EA580C'],
-    title: 'To-Do List for\nEvery Task',
-    subtitle: 'Add assignments, deadlines and study goals. Track active vs. completed tasks at a glance.',
+    id: 'timetable_qr',
+    icon: 'qrcode-scan',
+    gradient: ['#FB923C', '#D97706'],
+    title: 'Timetable & QR Sync',
+    subtitle: 'View all 6 days in a 3×2 grid. Share your schedule or scan your classmate’s QR live.',
     features: [
-      { icon: '🎯', text: 'Add tasks instantly from notes tab' },
-      { icon: '🔄', text: 'Filter: All / Active / Completed' },
-      { icon: '🧹', text: 'Clear done tasks in one tap' },
+      { text: 'All 6 days visible at once without scrolling' },
+      { text: 'Built-in camera scanner to import schedules instantly' },
+      { text: 'Add extra or compensatory lectures on any day' },
+    ],
+  },
+  {
+    id: 'notes_tasks',
+    icon: 'notebook-edit-outline',
+    gradient: ['#EA580C', '#C2410C'],
+    title: 'Subject Notes & Tasks',
+    subtitle: 'Keep lecture notes organized per subject and track your assignments and study goals.',
+    features: [
+      { text: 'Organized notes linked directly to your subjects' },
+      { text: 'Active vs. Completed assignment to-do checklists' },
+      { text: '100% private, on-device local storage' },
     ],
   },
   {
     id: 'setup',
-    emoji: null,
+    icon: null,
     gradient: null,
     title: "What's your name?",
     subtitle: "We'll personalise your experience. Your data stays on-device, always private.",
@@ -119,19 +124,19 @@ const SlideCard = ({ slide, index, scrollX, isDark, theme }) => {
 
   return (
     <Animated.View style={[styles.slideCard, animatedStyle]}>
-      {/* Emoji icon with gradient bubble */}
+      {/* Icon with gradient bubble */}
       <Animated.View style={[styles.emojiWrapper, floatStyle]}>
         <LinearGradient colors={slide.gradient} style={styles.emojiBubble}>
-          <Text style={styles.slideEmoji}>{slide.emoji}</Text>
+          <MaterialCommunityIcons name={slide.icon} size={38} color="#FFF" />
         </LinearGradient>
         {/* Glow ring */}
         <View style={[styles.glowRing, { borderColor: slide.gradient[0] + '40' }]} />
       </Animated.View>
 
-      <Text style={[styles.slideTitle, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
+      <Text style={[styles.slideTitle, { color: theme.colors.text }]}>
         {slide.title}
       </Text>
-      <Text style={[styles.slideSubtitle, { color: isDark ? '#A1A1AA' : '#64748B' }]}>
+      <Text style={[styles.slideSubtitle, { color: theme.colors.onSurfaceVariant }]}>
         {slide.subtitle}
       </Text>
 
@@ -152,8 +157,8 @@ const SlideCard = ({ slide, index, scrollX, isDark, theme }) => {
                 },
               ]}
             >
-              <Text style={styles.featureIcon}>{f.icon}</Text>
-              <Text style={[styles.featureText, { color: isDark ? '#D4D4D8' : '#334155' }]}>
+              <MaterialCommunityIcons name="check" size={16} color={theme.colors.primary} style={{ marginRight: 10 }} />
+              <Text style={[styles.featureText, { color: theme.colors.text }]}>
                 {f.text}
               </Text>
             </View>
@@ -181,7 +186,7 @@ const PagerDot = ({ index, scrollX, isDark }) => {
     return {
       width,
       opacity,
-      backgroundColor: isDark ? '#BB86FC' : '#7C3AED',
+      backgroundColor: isDark ? '#FB923C' : '#EA580C',
     };
   });
   return <Animated.View style={[styles.dot, dotStyle]} />;
@@ -318,7 +323,7 @@ const OnboardingScreen = ({ navigation }) => {
                   )}
 
                   <Text style={[styles.privacyNote, { color: isDark ? '#71717A' : '#94A3B8' }]}>
-                    🔒 Your data stays on this device only. Nothing is ever uploaded.
+                    Your data stays on this device only. Offline & private.
                   </Text>
                 </View>
               </View>
@@ -348,7 +353,7 @@ const OnboardingScreen = ({ navigation }) => {
           ))}
         </View>
 
-        {/* Next / Get Started button */}
+        {/* Continue / Get Started button */}
         <Animated.View style={[styles.nextBtnWrapper, buttonAnimStyle]}>
           <Pressable
             onPress={goNext}
@@ -365,24 +370,11 @@ const OnboardingScreen = ({ navigation }) => {
               style={[styles.nextBtn, shadows.medium]}
             >
               <Text style={styles.nextBtnText}>
-                {isLastSlide ? (isSubmitting ? 'Setting up...' : '🚀 Get Started') : 'Next  →'}
+                {isLastSlide ? (isSubmitting ? 'Setting up...' : 'Get Started') : 'Continue'}
               </Text>
             </LinearGradient>
           </Pressable>
         </Animated.View>
-
-        {/* Skip button on non-last slides */}
-        {!isLastSlide && (
-          <Pressable
-            onPress={() => {
-              scrollRef.current?.scrollTo({ x: (TOTAL_SLIDES - 1) * SCREEN_WIDTH, animated: true });
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }}
-            style={[styles.skipBtn, { borderColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)' }]}
-          >
-            <Text style={[styles.skipText, { color: isDark ? '#A1A1AA' : '#64748B' }]}>Skip intro</Text>
-          </Pressable>
-        )}
       </View>
     </LinearGradient>
     </KeyboardAvoidingView>

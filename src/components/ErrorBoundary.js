@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, SafeAreaView, Pressable } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue, useAnimatedStyle,
@@ -69,7 +70,7 @@ const ErrorFallback = ({ onRetry, error }) => {
             >
                 <View style={styles.content}>
                     <Animated.View style={emojiStyle}>
-                        <Text style={styles.emoji}>😵</Text>
+                        <MaterialCommunityIcons name="alert-octagon-outline" size={54} color={theme.colors.error} />
                     </Animated.View>
                     <Text variant="headlineSmall" style={[styles.title, { color: theme.colors.text }]}>
                         Something went wrong

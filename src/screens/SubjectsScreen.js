@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet, FlatList, Alert, Pressable } from 'react-native';
 import { useTheme, Text, IconButton } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Animated, {
@@ -160,7 +161,7 @@ const SubjectsScreen = () => {
         <LinearGradient colors={backgroundGradient} style={styles.container}>
             {subjects.length === 0 ? (
                 <Animated.View entering={FadeInDown.duration(500)} style={styles.emptyState}>
-                    <Text style={styles.emptyEmoji}>📚</Text>
+                    <MaterialCommunityIcons name="book-open-page-variant-outline" size={44} color={theme.colors.onSurfaceVariant} style={{ marginBottom: 8 }} />
                     <Text variant="titleLarge" style={[styles.emptyTitle, { color: theme.colors.text }]}>
                         No subjects added yet
                     </Text>
