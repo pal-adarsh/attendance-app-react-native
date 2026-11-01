@@ -34,16 +34,26 @@ Notifications.setNotificationHandler({
 });
 
 const requestPermissions = async () => {
-    const { status } = await Notifications.requestPermissionsAsync();
-    if (status !== 'granted') return false;
-    if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('attendance-reminder', {
-            name: 'Attendance Reminders',
-            importance: Notifications.AndroidImportance.HIGH,
-            vibrationPattern: [0, 100, 50, 100],
-        });
+    try {
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+        if (existingStatus !== 'granted') {
+            const { status } = await Notifications.requestPermissionsAsync();
+            finalStatus = status;
+        }
+        if (finalStatus !== 'granted') return false;
+        if (Platform.OS === 'android') {
+            await Notifications.setNotificationChannelAsync('attendance-reminder', {
+                name: 'Attendance Reminders',
+                importance: Notifications.AndroidImportance.HIGH,
+                vibrationPattern: [0, 100, 50, 100],
+            });
+        }
+        return true;
+    } catch (e) {
+        console.warn('Notification permission error', e);
+        return false;
     }
-    return true;
 };
 
 export const scheduleReminders = async () => {

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { validateBackupPayload } from './security';
 
 export const DATA_SCHEMA_VERSION = 3;
 
@@ -102,7 +103,7 @@ export const initializeStorage = async () => {
             [STUDENT_KEY, { name: '', setupComplete: false }],
             [TIMETABLE_KEY, { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [] }],
             [RECORDS_KEY, []],
-            [THEME_KEY, 'dark'],
+            [THEME_KEY, 'light'],
             [SCHEMA_VERSION_KEY, String(DATA_SCHEMA_VERSION)],
             [NOTES_KEY, []],
             [TODOS_KEY, []],
@@ -633,7 +634,7 @@ export const StorageService = {
 
     // ========== EXPORT / IMPORT ==========
 
-    EXPORT_VERSION: 2,
+    EXPORT_VERSION: 3,
 
     async exportAllData() {
         const [subjects, studentProfile, timetable, attendanceRecords, notes, todos, holidays, workingDays] = await Promise.all([
@@ -654,13 +655,8 @@ export const StorageService = {
     },
 
     async importAllData(backup) {
-        if (!backup || !backup.data) {
-            throw new Error('Invalid backup file: missing data object');
-        }
-        if (!backup.version || backup.version > this.EXPORT_VERSION) {
-            throw new Error('Unsupported backup version');
-        }
-        const { subjects, studentProfile, timetable, attendanceRecords, notes, todos, holidays, workingDays } = backup.data;
+        const sanitizedData = validateBackupPayload(backup, this.EXPORT_VERSION);
+        const { subjects, studentProfile, timetable, attendanceRecords, notes, todos, holidays, workingDays } = sanitizedData;
 
         if (subjects !== undefined) {
             await this.saveSubjects(subjects);

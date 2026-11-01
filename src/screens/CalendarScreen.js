@@ -236,22 +236,39 @@ const CalendarScreen = () => {
                                 {formatLocalDate(selectedDate)}
                             </Text>
                         </View>
-                        <Chip
-                            icon={isSelectedDateHoliday ? 'weather-sunny' : 'palm-tree'}
-                            selected={isSelectedDateHoliday}
-                            onPress={toggleSelectedDateHoliday}
-                            style={[
-                                styles.holidayChip,
-                                isSelectedDateHoliday && { backgroundColor: theme.colors.attendanceYellow + '25', borderColor: theme.colors.attendanceYellow }
-                            ]}
-                            textStyle={{
-                                color: isSelectedDateHoliday ? theme.colors.attendanceYellow : theme.colors.onSurfaceVariant,
-                                fontSize: 11,
-                                fontWeight: isSelectedDateHoliday ? 'bold' : 'normal',
-                            }}
-                        >
-                            {isSelectedDateHoliday ? 'Holiday' : 'Set Holiday'}
-                        </Chip>
+                        <View style={styles.headerChipsRow}>
+                            <Chip
+                                icon={isSelectedDateHoliday ? 'weather-sunny' : 'palm-tree'}
+                                selected={isSelectedDateHoliday}
+                                onPress={toggleSelectedDateHoliday}
+                                style={[
+                                    styles.holidayChip,
+                                    isSelectedDateHoliday && { backgroundColor: theme.colors.attendanceYellow + '25', borderColor: theme.colors.attendanceYellow }
+                                ]}
+                                textStyle={{
+                                    color: isSelectedDateHoliday ? theme.colors.attendanceYellow : theme.colors.onSurfaceVariant,
+                                    fontSize: 11,
+                                    fontWeight: isSelectedDateHoliday ? 'bold' : 'normal',
+                                }}
+                            >
+                                {isSelectedDateHoliday ? 'Holiday' : 'Set Holiday'}
+                            </Chip>
+
+                            {!isSelectedDateHoliday && !isFuture && (
+                                <Chip
+                                    icon="plus"
+                                    onPress={() => setExtraModalVisible(true)}
+                                    style={styles.holidayChip}
+                                    textStyle={{
+                                        color: theme.colors.primary,
+                                        fontSize: 11,
+                                        fontWeight: 'bold',
+                                    }}
+                                >
+                                    Extra Class
+                                </Chip>
+                            )}
+                        </View>
                     </View>
 
                     {isSelectedDateHoliday ? (
@@ -434,12 +451,17 @@ const styles = StyleSheet.create({
         paddingBottom: 8,
         ...shadows.small,
     },
-    content: { padding: 16, paddingTop: 4, paddingBottom: 40 },
+    content: { padding: 16, paddingTop: 4, paddingBottom: 110 },
     dateHeaderRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         marginBottom: 14,
+    },
+    headerChipsRow: {
+        flexDirection: 'row',
+        gap: 6,
+        alignItems: 'center',
     },
     dateTitle: { fontWeight: 'bold' },
     holidayChip: { borderRadius: 16, borderWidth: 1, borderColor: 'transparent' },

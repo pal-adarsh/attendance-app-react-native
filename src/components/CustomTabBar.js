@@ -7,6 +7,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useThemeContext } from '../utils/ThemeContext';
 import { shadows, animations } from '../constants/theme';
@@ -17,6 +18,10 @@ const TAB_PADDING = 8;
 
 const CustomTabBar = ({ state, descriptors, navigation }) => {
   const { theme, isDark } = useThemeContext();
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 6);
+  const barHeight = 56 + bottomInset;
+
   const routesCount = state.routes.length;
   const tabWidth = (TAB_BAR_WIDTH - TAB_PADDING * 2) / routesCount;
 
@@ -37,7 +42,18 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
   });
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.surfaceVariant, shadowColor: isDark ? '#000' : '#0F172A' }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: theme.colors.surface,
+          borderTopColor: theme.colors.surfaceVariant,
+          shadowColor: isDark ? '#000' : '#0F172A',
+          height: barHeight,
+          paddingBottom: bottomInset,
+        }
+      ]}
+    >
       {/* Animated active indicator pill background */}
       <Animated.View
         style={[
@@ -45,7 +61,8 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
           {
             width: tabWidth,
             backgroundColor: theme.colors.tabIndicatorGlow,
-            borderColor: theme.colors.cardBorder
+            borderColor: theme.colors.cardBorder,
+            bottom: bottomInset - 2,
           },
           indicatorStyle,
         ]}
@@ -159,18 +176,17 @@ const TabItem = ({ onPress, onLongPress, isFocused, iconName, label, tabWidth, t
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    paddingVertical: 10,
+    paddingTop: 8,
     paddingHorizontal: TAB_PADDING,
     borderTopWidth: 1,
     ...shadows.large,
     position: 'relative',
-    height: 64,
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   tabButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    height: '100%',
+    height: 48,
     zIndex: 1,
   },
   activeIndicator: {
@@ -178,7 +194,6 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     borderWidth: 1,
-    bottom: 8,
     left: TAB_PADDING,
   },
   label: {

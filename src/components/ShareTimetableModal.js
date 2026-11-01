@@ -1,12 +1,15 @@
 import React, { useState, useMemo } from 'react';
-import { View, StyleSheet, ScrollView, Image, Alert, Share, ActivityIndicator, Pressable, Dimensions } from 'react-native';
-import { Modal, Portal, Text, TextInput, Button, useTheme, IconButton } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Image, Alert, ActivityIndicator, Pressable, Dimensions } from 'react-native';
+import { Modal, Portal, Text, Button, useTheme, IconButton } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { useThemeContext } from '../utils/ThemeContext';
 import { gradients, shadows } from '../constants/theme';
 import { StorageService } from '../utils/storage';
+import { validateTimetableBundle } from '../utils/security';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -14,9 +17,9 @@ const ShareTimetableModal = ({ visible, onDismiss, timetable = {}, subjects = []
   const theme = useTheme();
   const { isDark } = useThemeContext();
 
-  const [activeTab, setActiveTab] = useState('share'); // 'share' | 'scan' | 'paste'
-  const [importCode, setImportCode] = useState('');
+  const [activeTab, setActiveTab] = useState('share'); // 'share' | 'scan'
   const [qrLoading, setQrLoading] = useState(true);
+  const [isSharingQR, setIsSharingQR] = useState(false);
   const [importError, setImportError] = useState('');
   const [isImporting, setIsImporting] = useState(false);
 
@@ -67,30 +70,59 @@ const ShareTimetableModal = ({ visible, onDismiss, timetable = {}, subjects = []
 
   const qrUri = useMemo(() => {
     if (!sharePayload) return '';
-    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=${encodeURIComponent(sharePayload)}`;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=15&data=${encodeURIComponent(sharePayload)}`;
   }, [sharePayload]);
 
-  const handleShareSheet = async () => {
+  // Share QR Code Image Only (no raw text / links)
+  const handleShareQRCodeImage = async () => {
     try {
+      setIsSharingQR(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      await Share.share({
-        title: 'Class Timetable',
-        message: `Here is our class timetable for Attendance Calculator app:\n\n${sharePayload}`,
-      });
+
+      if (!qrUri) {
+        Alert.alert('Error', 'Timetable QR code is not ready yet.');
+        return;
+      }
+
+      const response = await fetch(qrUri);
+      if (!response.ok) {
+        throw new Error('Could not download QR code image from server');
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const uint8 = new Uint8Array(arrayBuffer);
+
+      const fileName = `timetable-qr-${Date.now()}.png`;
+      const file = new File(Paths.cache, fileName);
+      try {
+        file.create({ idempotent: true });
+      } catch (e) {}
+      file.write(uint8);
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(file.uri, {
+          mimeType: 'image/png',
+          dialogTitle: 'Share Timetable QR Code',
+          UTI: 'public.png',
+        });
+      } else {
+        Alert.alert('Sharing Unavailable', 'Your device does not support native file sharing. Have your classmate scan the QR code from your screen.');
+      }
     } catch (e) {
-      console.error('Failed to share timetable', e);
+      console.error('Failed to share QR code image', e);
+      Alert.alert('Unable to Share Image', 'Classmates can scan the QR code displayed directly on your screen.');
+    } finally {
+      setIsSharingQR(false);
     }
   };
 
-  // Core Import Handler (Unified for Scan & Paste)
-  const executeImport = async (parsed) => {
+  // Core Import Handler with full security validation
+  const executeImport = async (rawParsed) => {
     setIsImporting(true);
     setImportError('');
 
     try {
-      if (!parsed.schedule || !Array.isArray(parsed.subjects)) {
-        throw new Error('Invalid format: missing subjects or schedule');
-      }
+      const parsed = validateTimetableBundle(rawParsed);
 
       // Merge subjects
       const existingSubjects = await StorageService.loadSubjects();
@@ -164,28 +196,6 @@ const ShareTimetableModal = ({ visible, onDismiss, timetable = {}, subjects = []
     }
   };
 
-  const handleApplyPasteImport = () => {
-    if (!importCode.trim()) {
-      setImportError('Please paste a timetable code or JSON.');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
-    }
-
-    try {
-      let jsonString = importCode.trim();
-      const jsonStart = jsonString.indexOf('{');
-      const jsonEnd = jsonString.lastIndexOf('}');
-      if (jsonStart >= 0 && jsonEnd > jsonStart) {
-        jsonString = jsonString.substring(jsonStart, jsonEnd + 1);
-      }
-      const parsed = JSON.parse(jsonString);
-      executeImport(parsed);
-    } catch (e) {
-      setImportError('Invalid timetable JSON code format.');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    }
-  };
-
   // QR Barcode Scanned Callback
   const handleBarcodeScanned = ({ data }) => {
     if (scanned || isImporting) return;
@@ -200,17 +210,15 @@ const ShareTimetableModal = ({ visible, onDismiss, timetable = {}, subjects = []
       }
 
       const parsed = JSON.parse(jsonString);
-      if (!parsed.schedule || !Array.isArray(parsed.subjects)) {
-        throw new Error('Not an Attendance timetable code');
-      }
+      const validated = validateTimetableBundle(parsed);
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setScannedTimetable(parsed);
+      setScannedTimetable(validated);
     } catch (e) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert(
         'Unrecognized QR Code',
-        'This QR code does not contain a valid attendance timetable. Please ensure your friend displays their timetable QR code.',
+        'This QR code does not contain a valid timetable. Please ensure your friend displays their timetable QR code.',
         [{ text: 'Try Again', onPress: () => { setScanned(false); setScannedTimetable(null); } }]
       );
     }
@@ -231,14 +239,12 @@ const ShareTimetableModal = ({ visible, onDismiss, timetable = {}, subjects = []
             <View style={styles.header}>
               <View style={{ flex: 1 }}>
                 <Text variant="titleLarge" style={[styles.title, { color: theme.colors.text }]}>
-                  {activeTab === 'share' && 'Share Timetable'}
-                  {activeTab === 'scan' && 'Scan Timetable QR'}
-                  {activeTab === 'paste' && 'Paste Timetable Code'}
+                  {activeTab === 'share' ? 'Share Timetable' : 'Scan Timetable QR'}
                 </Text>
                 <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {activeTab === 'share' && 'Show this QR or share link with classmates'}
-                  {activeTab === 'scan' && 'Scan a classmate’s timetable QR directly'}
-                  {activeTab === 'paste' && 'Import schedule via JSON or shared text'}
+                  {activeTab === 'share'
+                    ? 'Let classmates scan this QR code or share the image'
+                    : 'Point camera at a classmate’s timetable QR code'}
                 </Text>
               </View>
               <IconButton
@@ -249,7 +255,7 @@ const ShareTimetableModal = ({ visible, onDismiss, timetable = {}, subjects = []
               />
             </View>
 
-            {/* 3-Tab Segmented Selector */}
+            {/* 2-Tab Segmented Selector */}
             <View style={[styles.toggleContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' }]}>
               <Pressable
                 onPress={() => { setActiveTab('share'); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
@@ -271,15 +277,6 @@ const ShareTimetableModal = ({ visible, onDismiss, timetable = {}, subjects = []
               >
                 <Text style={[styles.toggleText, { color: activeTab === 'scan' ? '#FFF' : theme.colors.onSurfaceVariant, fontWeight: activeTab === 'scan' ? 'bold' : '600' }]}>
                   Scan QR
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => { setActiveTab('paste'); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                style={[styles.toggleBtn, activeTab === 'paste' && { backgroundColor: theme.colors.primary, ...shadows.small }]}
-              >
-                <Text style={[styles.toggleText, { color: activeTab === 'paste' ? '#FFF' : theme.colors.onSurfaceVariant, fontWeight: activeTab === 'paste' ? 'bold' : '600' }]}>
-                  Paste Code
                 </Text>
               </Pressable>
             </View>
@@ -311,13 +308,15 @@ const ShareTimetableModal = ({ visible, onDismiss, timetable = {}, subjects = []
 
                   <Button
                     mode="contained"
-                    icon="share-variant"
-                    onPress={handleShareSheet}
+                    icon="qrcode"
+                    onPress={handleShareQRCodeImage}
+                    loading={isSharingQR}
+                    disabled={isSharingQR || qrLoading}
                     style={[styles.actionBtn, { backgroundColor: theme.colors.primary }]}
                     contentStyle={{ paddingVertical: 4 }}
                     labelStyle={{ color: '#FFF', fontWeight: 'bold' }}
                   >
-                    Share Timetable Link / Text
+                    Share QR Code
                   </Button>
                 </View>
               </ScrollView>
@@ -348,7 +347,7 @@ const ShareTimetableModal = ({ visible, onDismiss, timetable = {}, subjects = []
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                         const res = await requestPermission();
                         if (!res.granted) {
-                          Alert.alert('Permission Denied', 'You can still import timetables by pasting the text in the "Paste Code" tab.');
+                          Alert.alert('Permission Denied', 'Please enable camera access in your device settings to scan timetable QR codes.');
                         }
                       }}
                       style={[styles.actionBtn, { backgroundColor: theme.colors.primary }]}
@@ -441,54 +440,6 @@ const ShareTimetableModal = ({ visible, onDismiss, timetable = {}, subjects = []
                 )}
               </View>
             )}
-
-            {/* Tab 3: Paste Code */}
-            {activeTab === 'paste' && (
-              <ScrollView
-                style={styles.scrollArea}
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-              >
-                <View style={styles.importContent}>
-                  <Text variant="bodySmall" style={{ color: theme.colors.text, marginBottom: 8, fontWeight: '600' }}>
-                    Paste the shared timetable JSON text from your classmate:
-                  </Text>
-
-                  <TextInput
-                    mode="outlined"
-                    placeholder='{"type":"ATTENDANCE_TIMETABLE_V1"...}'
-                    placeholderTextColor={theme.colors.onSurfaceVariant}
-                    value={importCode}
-                    onChangeText={(t) => { setImportCode(t); setImportError(''); }}
-                    multiline
-                    numberOfLines={6}
-                    style={styles.importInput}
-                    outlineColor={theme.colors.cardBorder}
-                    activeOutlineColor={theme.colors.primary}
-                    textColor={theme.colors.text}
-                  />
-
-                  {!!importError && (
-                    <Text variant="labelSmall" style={{ color: theme.colors.error, marginTop: 6 }}>
-                      {importError}
-                    </Text>
-                  )}
-
-                  <Button
-                    mode="contained"
-                    icon="download"
-                    onPress={handleApplyPasteImport}
-                    loading={isImporting}
-                    disabled={isImporting || !importCode.trim()}
-                    style={[styles.actionBtn, { backgroundColor: theme.colors.primary, marginTop: 16 }]}
-                    contentStyle={{ paddingVertical: 4 }}
-                    labelStyle={{ color: '#FFF', fontWeight: 'bold' }}
-                  >
-                    Import & Save Timetable
-                  </Button>
-                </View>
-              </ScrollView>
-            )}
           </LinearGradient>
         </View>
       </Modal>
@@ -505,11 +456,11 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
     borderWidth: 1,
-    height: Math.min(SCREEN_HEIGHT * 0.88, 680),
+    height: Math.min(SCREEN_HEIGHT * 0.74, 520),
   },
   gradientContainer: {
     flex: 1,
-    padding: 18,
+    padding: 16,
     display: 'flex',
     flexDirection: 'column',
   },
@@ -517,7 +468,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   title: {
     fontWeight: 'bold',
@@ -525,34 +476,34 @@ const styles = StyleSheet.create({
   toggleContainer: {
     flexDirection: 'row',
     borderRadius: 12,
-    padding: 4,
-    marginBottom: 14,
+    padding: 3,
+    marginBottom: 10,
   },
   toggleBtn: {
     flex: 1,
-    paddingVertical: 9,
+    paddingVertical: 7,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
   },
   toggleText: {
-    fontSize: 12.5,
+    fontSize: 12,
   },
   scrollArea: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 16,
+    paddingBottom: 10,
   },
   shareContent: {
     alignItems: 'center',
-    paddingVertical: 6,
+    paddingVertical: 4,
   },
   qrWrapper: {
-    width: 220,
-    height: 220,
-    borderRadius: 18,
-    padding: 8,
+    width: 190,
+    height: 190,
+    borderRadius: 16,
+    padding: 6,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -562,8 +513,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   qrImage: {
-    width: 200,
-    height: 200,
+    width: 174,
+    height: 174,
     borderRadius: 10,
   },
   tabContainer: {
@@ -579,12 +530,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
   cameraFrame: {
-    width: 240,
-    height: 240,
-    borderRadius: 20,
+    width: 210,
+    height: 210,
+    borderRadius: 18,
     overflow: 'hidden',
     position: 'relative',
     borderWidth: 1,
@@ -679,13 +630,6 @@ const styles = StyleSheet.create({
   actionBtn: {
     width: '100%',
     borderRadius: 12,
-  },
-  importContent: {
-    paddingVertical: 4,
-  },
-  importInput: {
-    backgroundColor: 'transparent',
-    fontSize: 13,
   },
 });
 

@@ -27,6 +27,7 @@ import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
 import { gradients, shadows, animations } from '../constants/theme';
+import { sanitizeText } from '../utils/security';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -231,7 +232,8 @@ const OnboardingScreen = ({ navigation }) => {
   };
 
   const handleGetStarted = async () => {
-    if (!name.trim()) {
+    const cleanName = sanitizeText(name, 50);
+    if (!cleanName) {
       setError('Please enter your name to continue');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
@@ -239,7 +241,7 @@ const OnboardingScreen = ({ navigation }) => {
     setIsSubmitting(true);
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      await StorageService.saveStudentProfile({ name: name.trim(), setupComplete: true });
+      await StorageService.saveStudentProfile({ name: cleanName, setupComplete: true });
       navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
     } catch (e) {
       console.error('Failed to save profile', e);

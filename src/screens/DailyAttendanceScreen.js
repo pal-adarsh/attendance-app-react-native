@@ -523,7 +523,7 @@ const StatusBtn = ({ label, active, activeColor, isDark, theme, onPress }) => (
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    scrollContent: { padding: 16, paddingBottom: 40 },
+    scrollContent: { padding: 16, paddingBottom: 110 },
     header: { marginBottom: 18 },
     headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
     greeting: { fontWeight: 'bold' },

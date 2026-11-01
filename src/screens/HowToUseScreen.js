@@ -39,10 +39,10 @@ const sections = [
         ],
     },
     {
-        title: 'Sharing & Importing Timetables',
+        title: 'Sharing & Scanning Timetables',
         steps: [
-            'Go to Timetable > Share / Import to display a QR code or share your class schedule with friends.',
-            'Classmates can paste the timetable code to instantly import all subjects and timetable slots in one click.',
+            'Go to Timetable > Share / Scan QR to display your schedule QR code or share the QR image with friends.',
+            'Classmates can use the "Scan QR" camera scanner to instantly import all subjects and weekly timetable slots in one tap.',
         ],
     },
     {

@@ -2,18 +2,24 @@
  * Get today's date as YYYY-MM-DD in local timezone
  */
 export const toLocalDateString = (date = new Date()) => {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    const d = (date instanceof Date && !isNaN(date.getTime())) ? date : (date ? new Date(date) : new Date());
+    if (isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
 };
 
 /**
  * Parse a YYYY-MM-DD string into a Date object at local midnight
  */
 export const parseLocalDateString = (str) => {
-    const [y, m, d] = str.split('-').map(Number);
-    return new Date(y, m - 1, d);
+    if (!str || typeof str !== 'string') return new Date();
+    const parts = str.split('-').map(Number);
+    if (parts.length < 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) {
+        return new Date();
+    }
+    return new Date(parts[0], parts[1] - 1, parts[2]);
 };
 
 /**

@@ -12,6 +12,7 @@ import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import { isReminderEnabled, setReminderEnabled } from '../utils/notifications';
 import { gradients } from '../constants/theme';
+import { safeOpenURL, sanitizeText } from '../utils/security';
 
 const SettingsScreen = ({ navigation }) => {
   const theme = useTheme();
@@ -44,16 +45,18 @@ const SettingsScreen = ({ navigation }) => {
   };
 
   const handleSaveName = async () => {
-    if (!name.trim()) {
+    const cleanName = sanitizeText(name, 50);
+    if (!cleanName) {
       setError('Name cannot be empty');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
     try {
       await StorageService.saveStudentProfile({
-        name: name.trim(),
+        name: cleanName,
         setupComplete: true,
       });
+      setName(cleanName);
       setSuccess('Name updated successfully!');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setTimeout(() => {
@@ -104,7 +107,12 @@ const SettingsScreen = ({ navigation }) => {
       const json = JSON.stringify(data, null, 2);
       const fileName = `attendance-backup-${new Date().toISOString().slice(0, 10)}.json`;
       const file = new File(Paths.cache, fileName);
-      file.write(json, { encoding: 'utf8' });
+      try {
+        file.create({ idempotent: true });
+      } catch (err) {
+        // file already exists or create not needed
+      }
+      file.write(json);
       await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: 'Save Attendance Backup', UTI: 'public.json' });
       setBackupMsg('Export successful!');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -121,10 +129,17 @@ const SettingsScreen = ({ navigation }) => {
       setImporting(true);
       setBackupMsg('');
       const result = await DocumentPicker.getDocumentAsync({ type: 'application/json', copyToCacheDirectory: true });
-      if (result.canceled) return;
+      if (result.canceled || !result.assets || !result.assets[0]) return;
       const pickedFile = result.assets[0];
-      const file = new File(pickedFile.uri);
-      const text = await file.text();
+      let text = '';
+      try {
+        const file = new File(pickedFile.uri);
+        text = await file.text();
+      } catch (readErr) {
+        // Fallback for content:// or custom URI schemes
+        const resp = await fetch(pickedFile.uri);
+        text = await resp.text();
+      }
       const backup = JSON.parse(text);
       await StorageService.importAllData(backup);
       setBackupMsg(`Restored from ${pickedFile.name || 'backup'}.`);
@@ -365,7 +380,7 @@ const SettingsScreen = ({ navigation }) => {
           </View>
           <View style={[styles.divider, { backgroundColor: theme.colors.surfaceVariant, marginVertical: 12 }]} />
           <View style={styles.creatorLinks}>
-            <Pressable style={styles.creatorLinkRow} onPress={() => Linking.openURL('http://adarshpal.me/')} accessibilityLabel="Portfolio website">
+            <Pressable style={styles.creatorLinkRow} onPress={() => safeOpenURL('https://adarshpal.me/')} accessibilityLabel="Portfolio website">
               <MaterialCommunityIcons name="web" size={22} color={theme.colors.primary} style={{ marginRight: 12 }} />
               <View style={styles.creatorLinkContent}>
                 <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>Portfolio</Text>
@@ -373,7 +388,7 @@ const SettingsScreen = ({ navigation }) => {
               </View>
               <IconButton icon="open-in-new" size={18} iconColor={theme.colors.onSurfaceVariant} />
             </Pressable>
-            <Pressable style={styles.creatorLinkRow} onPress={() => Linking.openURL('https://github.com/pal-adarsh')} accessibilityLabel="GitHub profile">
+            <Pressable style={styles.creatorLinkRow} onPress={() => safeOpenURL('https://github.com/pal-adarsh')} accessibilityLabel="GitHub profile">
               <MaterialCommunityIcons name="github" size={22} color={theme.colors.text} style={{ marginRight: 12 }} />
               <View style={styles.creatorLinkContent}>
                 <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>GitHub</Text>
@@ -381,7 +396,7 @@ const SettingsScreen = ({ navigation }) => {
               </View>
               <IconButton icon="open-in-new" size={18} iconColor={theme.colors.onSurfaceVariant} />
             </Pressable>
-            <Pressable style={styles.creatorLinkRow} onPress={() => Linking.openURL('mailto:adarsh.r.s.pal@gmail.com')} accessibilityLabel="Email">
+            <Pressable style={styles.creatorLinkRow} onPress={() => safeOpenURL('mailto:adarsh.r.s.pal@gmail.com')} accessibilityLabel="Email">
               <MaterialCommunityIcons name="email-outline" size={22} color={theme.colors.primary} style={{ marginRight: 12 }} />
               <View style={styles.creatorLinkContent}>
                 <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>Email</Text>
@@ -389,7 +404,7 @@ const SettingsScreen = ({ navigation }) => {
               </View>
               <IconButton icon="open-in-new" size={18} iconColor={theme.colors.onSurfaceVariant} />
             </Pressable>
-            <Pressable style={styles.creatorLinkRow} onPress={() => Linking.openURL('https://linkedin.com/in/adarsh-pal-11212b292')} accessibilityLabel="LinkedIn profile">
+            <Pressable style={styles.creatorLinkRow} onPress={() => safeOpenURL('https://linkedin.com/in/adarsh-pal-11212b292')} accessibilityLabel="LinkedIn profile">
               <MaterialCommunityIcons name="linkedin" size={22} color="#0A66C2" style={{ marginRight: 12 }} />
               <View style={styles.creatorLinkContent}>
                 <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>LinkedIn</Text>

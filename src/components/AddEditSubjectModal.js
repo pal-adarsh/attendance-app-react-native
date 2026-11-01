@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useThemeContext } from '../utils/ThemeContext';
 import { gradients, animations, shadows } from '../constants/theme';
+import { sanitizeText } from '../utils/security';
 
 const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => {
   const theme = useTheme();
@@ -73,14 +74,15 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
   };
 
   const handleSave = () => {
-    if (!name.trim()) {
+    const cleanName = sanitizeText(name, 60);
+    if (!cleanName) {
       setError('Subject name is required');
       triggerShake();
       return;
     }
 
-    let targetNum = parseInt(target) || 75;
-    let lecturesPerWeekNum = parseInt(lecturesPerWeek) || 0;
+    let targetNum = parseInt(target, 10) || 75;
+    let lecturesPerWeekNum = parseInt(lecturesPerWeek, 10) || 0;
 
     targetNum = Math.max(1, Math.min(targetNum, 100));
     lecturesPerWeekNum = Math.max(0, Math.min(lecturesPerWeekNum, 50));
@@ -93,7 +95,7 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
 
     onSave({
       id: editingSubject ? editingSubject.id : Date.now().toString(),
-      name: name.trim(),
+      name: cleanName,
       attended: attendedNum,
       total: totalNum,
       target: targetNum,

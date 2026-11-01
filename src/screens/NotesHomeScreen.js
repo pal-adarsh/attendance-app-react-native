@@ -10,6 +10,7 @@ import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
 import { gradients, shadows } from '../constants/theme';
+import { sanitizeText } from '../utils/security';
 
 const SORT_OPTIONS = [
     { key: 'updatedAt', label: 'Updated' },
@@ -210,7 +211,7 @@ const NotesHomeScreen = ({ route }) => {
     };
 
     const handleAddTodo = useCallback(async () => {
-        const text = newTodoText.trim();
+        const text = sanitizeText(newTodoText, 200);
         if (!text) {
             todoInputRef.current?.focus();
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

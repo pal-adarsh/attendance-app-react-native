@@ -81,13 +81,16 @@ export const getLecturesSkippable = (attended, total, target = 75) => {
  * @param {string} todayDate - today's date as YYYY-MM-DD
  * @returns {{ current: number, longest: number }}
  */
-export const getAttendanceStreak = (records, todayDate) => {
+export const getAttendanceStreak = (records = [], todayDate) => {
+    if (!Array.isArray(records) || records.length === 0) return { current: 0, longest: 0 };
+
     // Deduplicate dates so multiple lectures on the same day don't reset streak
     const presentDates = Array.from(
         new Set(
             records
-                .filter(r => r.status === 'present' || r.status === 'od')
+                .filter(r => r && (r.status === 'present' || r.status === 'od'))
                 .map(r => r.date)
+                .filter(Boolean)
         )
     ).sort();
 
@@ -111,7 +114,8 @@ export const getAttendanceStreak = (records, todayDate) => {
     }
 
     // Current streak (counting backward from today or yesterday)
-    const today = new Date(todayDate + 'T00:00:00');
+    const safeTodayStr = todayDate || new Date().toISOString().slice(0, 10);
+    const today = new Date(safeTodayStr.includes('T') ? safeTodayStr : safeTodayStr + 'T00:00:00');
     let checkDate = new Date(today);
     const presentSet = new Set(presentDates);
 
@@ -142,14 +146,15 @@ export const getAttendanceStreak = (records, todayDate) => {
  * @param {Array<{date: string, status: string}>} records
  * @returns {Array<{day: string, percentage: number, attended: number, total: number}>}
  */
-export const getDayOfWeekStats = (records) => {
+export const getDayOfWeekStats = (records = []) => {
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const dayTotals = {};
     const dayAttended = {};
 
-    for (const r of records) {
-        if (r.status === 'cancelled') continue; // Cancelled does not count towards day total
-        const date = new Date(r.date + 'T00:00:00');
+    const safeRecords = Array.isArray(records) ? records : [];
+    for (const r of safeRecords) {
+        if (!r || !r.date || r.status === 'cancelled') continue; // Cancelled does not count towards day total
+        const date = new Date(r.date.includes('T') ? r.date : r.date + 'T00:00:00');
         const day = date.getDay();
         const key = dayNames[day];
         dayTotals[key] = (dayTotals[key] || 0) + 1;
@@ -172,8 +177,10 @@ export const getDayOfWeekStats = (records) => {
  * @param {number} maxWeeks - max weeks to include
  * @returns {Array<{label: string, percentage: number, attended: number, total: number}>}
  */
-export const getWeeklyTrend = (records, todayDate, maxWeeks = 8) => {
-    const today = new Date(todayDate);
+export const getWeeklyTrend = (records = [], todayDate, maxWeeks = 8) => {
+    const safeRecords = Array.isArray(records) ? records : [];
+    const safeTodayStr = todayDate || new Date().toISOString().slice(0, 10);
+    const today = new Date(safeTodayStr.includes('T') ? safeTodayStr : safeTodayStr + 'T00:00:00');
     const weeks = [];
 
     for (let w = 0; w < maxWeeks; w++) {
@@ -186,7 +193,7 @@ export const getWeeklyTrend = (records, todayDate, maxWeeks = 8) => {
         const endStr = `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, '0')}-${String(weekEnd.getDate()).padStart(2, '0')}`;
 
         // Exclude cancelled records from weekly trend
-        const weekRecords = records.filter(r => r.date >= startStr && r.date <= endStr && r.status !== 'cancelled');
+        const weekRecords = safeRecords.filter(r => r && r.date && r.date >= startStr && r.date <= endStr && r.status !== 'cancelled');
         const total = weekRecords.length;
         const attended = weekRecords.filter(r => r.status === 'present' || r.status === 'od').length;
 
@@ -208,6 +215,7 @@ export const getWeeklyTrend = (records, todayDate, maxWeeks = 8) => {
  * @param {string} endDate - YYYY-MM-DD inclusive
  * @returns {Array}
  */
-export const filterRecordsByDateRange = (records, startDate, endDate) => {
-    return records.filter(r => r.date >= startDate && r.date <= endDate);
+export const filterRecordsByDateRange = (records = [], startDate, endDate) => {
+    if (!Array.isArray(records)) return [];
+    return records.filter(r => r && r.date && r.date >= startDate && r.date <= endDate);
 };

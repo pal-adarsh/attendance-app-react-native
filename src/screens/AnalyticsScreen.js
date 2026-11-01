@@ -308,19 +308,46 @@ const AnalyticsScreen = ({ navigation }) => {
                 {/* Streak Cards */}
                 <Animated.View entering={FadeInDown.duration(600).delay(120)}>
                     <View style={styles.streakRow}>
-                        <LinearGradient colors={gradients.primary} style={[styles.streakCard, shadows.small]}>
-                            <Text variant="displaySmall" style={styles.streakValue}>
+                        <LinearGradient
+                            colors={cardGradient}
+                            style={[
+                                styles.streakCard,
+                                {
+                                    borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                                    backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+                                },
+                                shadows.small,
+                            ]}
+                        >
+                            <View style={[styles.streakIconCircle, { backgroundColor: theme.colors.primary + '18' }]}>
+                                <MaterialCommunityIcons name="fire" size={22} color={theme.colors.primary} />
+                            </View>
+                            <Text variant="displaySmall" style={[styles.streakValue, { color: theme.colors.text }]}>
                                 {streaks.current}
                             </Text>
-                            <Text variant="bodySmall" style={styles.streakLabel}>
+                            <Text variant="bodySmall" style={[styles.streakLabel, { color: theme.colors.onSurfaceVariant }]}>
                                 Current Streak
                             </Text>
                         </LinearGradient>
-                        <LinearGradient colors={gradients.accent} style={[styles.streakCard, shadows.small]}>
-                            <Text variant="displaySmall" style={styles.streakValue}>
+
+                        <LinearGradient
+                            colors={cardGradient}
+                            style={[
+                                styles.streakCard,
+                                {
+                                    borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                                    backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+                                },
+                                shadows.small,
+                            ]}
+                        >
+                            <View style={[styles.streakIconCircle, { backgroundColor: (theme.colors.attendanceYellow || '#D97706') + '18' }]}>
+                                <MaterialCommunityIcons name="trophy-outline" size={22} color={theme.colors.attendanceYellow || '#D97706'} />
+                            </View>
+                            <Text variant="displaySmall" style={[styles.streakValue, { color: theme.colors.text }]}>
                                 {streaks.longest}
                             </Text>
-                            <Text variant="bodySmall" style={styles.streakLabel}>
+                            <Text variant="bodySmall" style={[styles.streakLabel, { color: theme.colors.onSurfaceVariant }]}>
                                 Best Streak
                             </Text>
                         </LinearGradient>
@@ -478,7 +505,7 @@ const AnalyticsScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    scrollContent: { padding: 16 },
+    scrollContent: { padding: 16, paddingBottom: 110 },
     simulatorBanner: {
         marginBottom: 16,
     },
@@ -519,10 +546,22 @@ const styles = StyleSheet.create({
         flexDirection: 'row', gap: 12, marginBottom: 16,
     },
     streakCard: {
-        flex: 1, borderRadius: 16, padding: 20, alignItems: 'center',
+        flex: 1,
+        borderRadius: 16,
+        padding: 16,
+        alignItems: 'center',
+        borderWidth: 1,
     },
-    streakValue: { color: '#FFF', fontWeight: 'bold' },
-    streakLabel: { color: 'rgba(255,255,255,0.8)', marginTop: 4 },
+    streakIconCircle: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 6,
+    },
+    streakValue: { fontWeight: 'bold', fontSize: 26, marginBottom: 2 },
+    streakLabel: { fontWeight: '600', fontSize: 12 },
     card: {
         borderRadius: 16, padding: 20, marginBottom: 16,
         borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',

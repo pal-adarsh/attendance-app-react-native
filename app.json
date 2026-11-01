@@ -5,29 +5,53 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#121212"
+      "backgroundColor": "#FAF7F2"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.adarsh.attendancecalculator",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Allow Attendance Calculator to access your camera to scan timetable QR codes."
       }
     },
     "android": {
       "package": "com.adarsh.attendancecalculator",
+      "allowBackup": false,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#121212"
+        "backgroundColor": "#FAF7F2"
       },
+      "permissions": [
+        "CAMERA",
+        "NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ],
       "edgeToEdgeEnabled": true,
       "jsEngine": "hermes"
     },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Attendance Calculator to access your camera to scan timetable QR codes.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#EA580C"
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     },
