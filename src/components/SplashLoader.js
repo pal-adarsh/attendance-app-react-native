@@ -51,12 +51,12 @@ const styles = StyleSheet.create({
   logoWrapper: { justifyContent: 'center', alignItems: 'center', width: 140, height: 140, marginBottom: 24 },
   glowRing: { position: 'absolute', width: 130, height: 130, borderRadius: 65 },
   logoCircle: {
-    width: 100, height: 100, borderRadius: 50,
+    width: 96, height: 96, borderRadius: 24,
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 1.5, overflow: 'hidden',
     elevation: 8, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5,
   },
-  appIcon: { width: 56, height: 56, borderRadius: 12 },
+  appIcon: { width: 90, height: 90, borderRadius: 20 },
   title: { fontSize: 22, fontWeight: 'bold', letterSpacing: 0.8, marginBottom: 32 },
   loader: { marginTop: 8 },
 });

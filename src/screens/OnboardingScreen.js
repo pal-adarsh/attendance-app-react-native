@@ -462,12 +462,12 @@ const styles = StyleSheet.create({
   setupIconGradient: {
     width: 88,
     height: 88,
-    borderRadius: 44,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     ...shadows.large,
   },
-  setupIcon: { width: 58, height: 58, borderRadius: 12 },
+  setupIcon: { width: 80, height: 80, borderRadius: 20 },
   setupTitle: {
     fontSize: 28,
     fontWeight: '800',
