@@ -210,7 +210,7 @@ export const StorageService = {
             return jsonValue != null ? JSON.parse(jsonValue) : [];
         } catch (e) {
             console.error('Failed to load subjects', e);
-            return [];
+            throw e;
         }
     },
 
@@ -219,6 +219,7 @@ export const StorageService = {
             await AsyncStorage.setItem(SUBJECTS_KEY, JSON.stringify(subjects));
         } catch (e) {
             console.error('Failed to save subjects', e);
+            throw e;
         }
     },
 
@@ -276,7 +277,7 @@ export const StorageService = {
             return jsonValue != null ? JSON.parse(jsonValue) : { name: '', setupComplete: false };
         } catch (e) {
             console.error('Failed to load student profile', e);
-            return { name: '', setupComplete: false };
+            throw e;
         }
     },
 
@@ -285,6 +286,7 @@ export const StorageService = {
             await AsyncStorage.setItem(STUDENT_KEY, JSON.stringify(profile));
         } catch (e) {
             console.error('Failed to save student profile', e);
+            throw e;
         }
     },
 
@@ -303,7 +305,7 @@ export const StorageService = {
             };
         } catch (e) {
             console.error('Failed to load timetable', e);
-            return { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [] };
+            throw e;
         }
     },
 
@@ -312,6 +314,7 @@ export const StorageService = {
             await AsyncStorage.setItem(TIMETABLE_KEY, JSON.stringify(timetable));
         } catch (e) {
             console.error('Failed to save timetable', e);
+            throw e;
         }
     },
 
@@ -322,7 +325,7 @@ export const StorageService = {
             return jsonValue != null ? JSON.parse(jsonValue) : [];
         } catch (e) {
             console.error('Failed to load attendance records', e);
-            return [];
+            throw e;
         }
     },
 
@@ -331,6 +334,7 @@ export const StorageService = {
             await AsyncStorage.setItem(RECORDS_KEY, JSON.stringify(records));
         } catch (e) {
             console.error('Failed to save attendance records', e);
+            throw e;
         }
     },
 
@@ -399,7 +403,7 @@ export const StorageService = {
             return jsonValue != null ? JSON.parse(jsonValue) : [];
         } catch (e) {
             console.error('Failed to load holidays', e);
-            return [];
+            throw e;
         }
     },
 
@@ -408,6 +412,7 @@ export const StorageService = {
             await AsyncStorage.setItem(HOLIDAYS_KEY, JSON.stringify(holidays));
         } catch (e) {
             console.error('Failed to save holidays', e);
+            throw e;
         }
     },
 
@@ -436,7 +441,7 @@ export const StorageService = {
             return jsonValue != null ? JSON.parse(jsonValue) : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
         } catch (e) {
             console.error('Failed to load working days', e);
-            return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+            throw e;
         }
     },
 
@@ -445,6 +450,7 @@ export const StorageService = {
             await AsyncStorage.setItem(WORKING_DAYS_KEY, JSON.stringify(days));
         } catch (e) {
             console.error('Failed to save working days', e);
+            throw e;
         }
     },
 
@@ -480,6 +486,7 @@ export const StorageService = {
             await AsyncStorage.setItem(THEME_KEY, mode);
         } catch (e) {
             console.error('Failed to save theme mode', e);
+            throw e;
         }
     },
 
@@ -490,7 +497,7 @@ export const StorageService = {
             return jsonValue != null ? JSON.parse(jsonValue) : [];
         } catch (e) {
             console.error('Failed to load notes', e);
-            return [];
+            throw e;
         }
     },
 
@@ -499,6 +506,7 @@ export const StorageService = {
             await AsyncStorage.setItem(NOTES_KEY, JSON.stringify(notes));
         } catch (e) {
             console.error('Failed to save notes', e);
+            throw e;
         }
     },
 
@@ -578,7 +586,7 @@ export const StorageService = {
             return jsonValue != null ? JSON.parse(jsonValue) : [];
         } catch (e) {
             console.error('Failed to load todos', e);
-            return [];
+            throw e;
         }
     },
 
@@ -587,6 +595,7 @@ export const StorageService = {
             await AsyncStorage.setItem(TODOS_KEY, JSON.stringify(todos));
         } catch (e) {
             console.error('Failed to save todos', e);
+            throw e;
         }
     },
 
