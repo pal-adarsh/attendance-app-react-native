@@ -19,6 +19,7 @@ const ShareTimetableModal = ({ visible, onDismiss, timetable = {}, subjects = []
 
   const [activeTab, setActiveTab] = useState('share'); // 'share' | 'scan'
   const [qrLoading, setQrLoading] = useState(true);
+  const [qrError, setQrError] = useState(false);
   const [isSharingQR, setIsSharingQR] = useState(false);
   const [importError, setImportError] = useState('');
   const [isImporting, setIsImporting] = useState(false);
@@ -295,12 +296,35 @@ const ShareTimetableModal = ({ visible, onDismiss, timetable = {}, subjects = []
                         <ActivityIndicator color={theme.colors.primary} />
                       </View>
                     )}
-                    <Image
-                      source={{ uri: qrUri }}
-                      style={styles.qrImage}
-                      onLoad={() => setQrLoading(false)}
-                      onError={() => setQrLoading(false)}
-                    />
+                    {qrError ? (
+                      <View style={{ alignItems: 'center', justifyContent: 'center', padding: 16, height: 200 }}>
+                        <MaterialCommunityIcons name="wifi-off" size={40} color={theme.colors.error} style={{ marginBottom: 6 }} />
+                        <Text variant="titleSmall" style={{ color: '#000000', fontWeight: 'bold', textAlign: 'center' }}>
+                          QR Image Offline
+                        </Text>
+                        <Text variant="bodySmall" style={{ color: '#666666', textAlign: 'center', marginTop: 4, marginBottom: 12 }}>
+                          Connect to the internet to load the visual QR code image.
+                        </Text>
+                        <Button
+                          mode="outlined"
+                          compact
+                          onPress={() => {
+                            setQrError(false);
+                            setQrLoading(true);
+                          }}
+                          textColor={theme.colors.primary}
+                        >
+                          Retry
+                        </Button>
+                      </View>
+                    ) : (
+                      <Image
+                        source={{ uri: qrUri }}
+                        style={styles.qrImage}
+                        onLoad={() => { setQrLoading(false); setQrError(false); }}
+                        onError={() => { setQrLoading(false); setQrError(true); }}
+                      />
+                    )}
                   </View>
                   <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center', marginTop: 12, marginBottom: 14 }}>
                     Friends can open "Scan QR" on their phone and point at this screen
