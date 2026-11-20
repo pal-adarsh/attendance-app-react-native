@@ -131,6 +131,12 @@ const SettingsScreen = ({ navigation }) => {
       const result = await DocumentPicker.getDocumentAsync({ type: 'application/json', copyToCacheDirectory: true });
       if (result.canceled || !result.assets || !result.assets[0]) return;
       const pickedFile = result.assets[0];
+
+      // Security: enforce max 5 MB limit to prevent out-of-memory crash
+      if (pickedFile.size && pickedFile.size > 5 * 1024 * 1024) {
+        throw new Error('Backup file exceeds maximum allowed size limit (5 MB)');
+      }
+
       let text = '';
       try {
         const file = new File(pickedFile.uri);
@@ -140,6 +146,11 @@ const SettingsScreen = ({ navigation }) => {
         const resp = await fetch(pickedFile.uri);
         text = await resp.text();
       }
+
+      if (text.length > 5 * 1024 * 1024) {
+        throw new Error('Backup content exceeds maximum allowed size (5 MB)');
+      }
+
       const backup = JSON.parse(text);
       await StorageService.importAllData(backup);
       setBackupMsg(`Restored from ${pickedFile.name || 'backup'}.`);
@@ -261,7 +272,7 @@ const SettingsScreen = ({ navigation }) => {
         {/* Edit Profile Name */}
         <View style={[styles.card, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
           <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            Edit Profile Name
+            Student Profile
           </Text>
 
           <View style={[styles.inputWrapper, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
@@ -290,7 +301,7 @@ const SettingsScreen = ({ navigation }) => {
             labelStyle={styles.btnLabel}
             accessibilityLabel="Save profile name"
           >
-            Save Profile
+            Save changes
           </Button>
         </View>
 

@@ -24,6 +24,7 @@ const NoteEditorScreen = ({ route, navigation }) => {
     const [body, setBody] = useState('');
     const [pinned, setPinned] = useState(false);
     const [saved, setSaved] = useState(true);
+    const [saveError, setSaveError] = useState(false);
     const [lastSavedAt, setLastSavedAt] = useState(null);
     const [isEditing, setIsEditing] = useState(!!noteId);
     const [subjectName, setSubjectName] = useState('');
@@ -134,10 +135,12 @@ const NoteEditorScreen = ({ route, navigation }) => {
                 navigation.setOptions({ title: savedNote.title || 'Edit Note' });
             }
             setSaved(true);
+            setSaveError(false);
             setLastSavedAt(now);
         } catch (e) {
             console.error('Failed to save note', e);
-            setSaved(true);
+            setSaved(false);
+            setSaveError(true);
         }
     };
 
@@ -194,9 +197,9 @@ const NoteEditorScreen = ({ route, navigation }) => {
                     <View style={styles.headerRight}>
                         {/* Save status to left of pin icon */}
                         <View style={styles.saveStatusContainer}>
-                            <View style={[styles.statusDot, { backgroundColor: saved ? theme.colors.attendanceGreen : theme.colors.attendanceYellow }]} />
-                            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontSize: 11 }}>
-                                {saved ? `Saved${lastSavedStr ? ` · ${lastSavedStr}` : ''}` : 'Saving...'}
+                            <View style={[styles.statusDot, { backgroundColor: saveError ? theme.colors.error : saved ? theme.colors.attendanceGreen : theme.colors.attendanceYellow }]} />
+                            <Text variant="labelSmall" style={{ color: saveError ? theme.colors.error : theme.colors.onSurfaceVariant, fontSize: 11 }}>
+                                {saveError ? 'Failed to save' : saved ? `Saved${lastSavedStr ? ` · ${lastSavedStr}` : ''}` : 'Saving...'}
                             </Text>
                         </View>
                         <IconButton
