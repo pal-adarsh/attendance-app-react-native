@@ -21,6 +21,7 @@ import Animated, {
   interpolate,
   Extrapolation,
   useAnimatedScrollHandler,
+  useReducedMotion,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StorageService } from '../utils/storage';
@@ -106,8 +107,13 @@ const SlideCard = ({ slide, index, scrollX, isDark, theme }) => {
     return { opacity, transform: [{ scale }, { translateY }] };
   });
 
+  const reducedMotion = useReducedMotion();
   const floatValue = useSharedValue(0);
   useEffect(() => {
+    if (reducedMotion) {
+      floatValue.value = 0;
+      return;
+    }
     floatValue.value = withRepeat(
       withSequence(
         withTiming(-10, { duration: 2200 }),
@@ -115,7 +121,7 @@ const SlideCard = ({ slide, index, scrollX, isDark, theme }) => {
       ),
       -1, true
     );
-  }, []);
+  }, [reducedMotion]);
 
   const floatStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: floatValue.value }],

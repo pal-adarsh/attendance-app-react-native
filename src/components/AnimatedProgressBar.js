@@ -6,25 +6,31 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   Easing,
+  useReducedMotion,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const AnimatedProgressBar = ({ progress, colors, height = 8, style }) => {
   const theme = useTheme();
-  const animatedWidth = useSharedValue(0);
+  const reducedMotion = useReducedMotion();
+  const animatedScale = useSharedValue(0);
 
   useEffect(() => {
-    // Keep between 0 and 1
     const clampedProgress = Math.max(0, Math.min(progress, 1));
-    animatedWidth.value = withTiming(clampedProgress, {
-      duration: 800,
-      easing: Easing.bezier(0.25, 0.1, 0.25, 1),
-    });
-  }, [progress]);
+    if (reducedMotion) {
+      animatedScale.value = clampedProgress;
+    } else {
+      animatedScale.value = withTiming(clampedProgress, {
+        duration: 800,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+      });
+    }
+  }, [progress, reducedMotion]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
-      width: `${animatedWidth.value * 100}%`,
+      transform: [{ scaleX: animatedScale.value }],
+      transformOrigin: 'left',
     };
   });
 
@@ -49,6 +55,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   fill: {
+    width: '100%',
     height: '100%',
     borderRadius: 4,
     overflow: 'hidden',

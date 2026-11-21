@@ -7,6 +7,7 @@ import Animated, {
   withSpring,
   withTiming,
   withSequence,
+  useReducedMotion,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -53,6 +54,8 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
     }
   }, [editingSubject, visible]);
 
+  const reducedMotion = useReducedMotion();
+
   const resetForm = () => {
     setName('');
     setTarget('75');
@@ -62,6 +65,9 @@ const AddEditSubjectModal = ({ visible, onDismiss, onSave, editingSubject }) => 
 
   const triggerShake = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    if (reducedMotion) {
+      return;
+    }
     shakeX.value = withSequence(
       withTiming(-12, { duration: 60 }),
       withTiming(12, { duration: 60 }),

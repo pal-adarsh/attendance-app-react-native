@@ -6,6 +6,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  useReducedMotion,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -128,11 +129,16 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
 
 // Sub-component for individual tab items with spring scaling on press
 const TabItem = ({ onPress, onLongPress, isFocused, iconName, label, tabWidth, theme, isDark }) => {
+  const reducedMotion = useReducedMotion();
   const scale = useSharedValue(isFocused ? 1.15 : 1);
 
   useEffect(() => {
-    scale.value = withSpring(isFocused ? 1.15 : 1, animations.bouncySpring);
-  }, [isFocused]);
+    if (reducedMotion) {
+      scale.value = 1;
+    } else {
+      scale.value = withSpring(isFocused ? 1.15 : 1, animations.bouncySpring);
+    }
+  }, [isFocused, reducedMotion]);
 
   const animatedIconStyle = useAnimatedStyle(() => {
     return {

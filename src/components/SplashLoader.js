@@ -7,16 +7,23 @@ import Animated, {
   withRepeat,
   withSequence,
   withTiming,
+  useReducedMotion,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { gradients } from '../constants/theme';
 
 const SplashLoader = () => {
   const theme = useTheme();
-  const scale = useSharedValue(0.9);
-  const opacity = useSharedValue(0.4);
+  const reducedMotion = useReducedMotion();
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(reducedMotion ? 0.7 : 0.4);
 
   useEffect(() => {
+    if (reducedMotion) {
+      scale.value = 1;
+      opacity.value = 0.7;
+      return;
+    }
     scale.value = withRepeat(
       withSequence(withTiming(1.08, { duration: 1200 }), withTiming(0.9, { duration: 1200 })),
       -1, true
@@ -25,7 +32,7 @@ const SplashLoader = () => {
       withSequence(withTiming(0.7, { duration: 1200 }), withTiming(0.3, { duration: 1200 })),
       -1, true
     );
-  }, []);
+  }, [reducedMotion]);
 
   const logoStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const glowStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));

@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue, useAnimatedStyle,
   withRepeat, withSequence, withTiming, withSpring,
+  useReducedMotion,
 } from 'react-native-reanimated';
 import { useThemeContext } from '../utils/ThemeContext';
 import { gradients, shadows, animations } from '../constants/theme';
@@ -39,10 +40,15 @@ class ErrorBoundaryInner extends React.Component {
 const ErrorFallback = ({ onRetry, error }) => {
     const theme = useTheme();
     const { isDark } = useThemeContext();
+    const reducedMotion = useReducedMotion();
     const emojiScale = useSharedValue(1);
     const buttonScale = useSharedValue(1);
 
     useEffect(() => {
+        if (reducedMotion) {
+            emojiScale.value = 1;
+            return;
+        }
         emojiScale.value = withRepeat(
             withSequence(
                 withTiming(1.12, { duration: 800 }),
@@ -50,7 +56,7 @@ const ErrorFallback = ({ onRetry, error }) => {
             ),
             -1, true
         );
-    }, []);
+    }, [reducedMotion]);
 
     const emojiStyle = useAnimatedStyle(() => ({
         transform: [{ scale: emojiScale.value }],
