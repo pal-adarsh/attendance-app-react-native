@@ -125,7 +125,7 @@ const BunkSimulatorModal = ({ visible, onDismiss, subjects = [] }) => {
             >
               {/* Subject Selector Chips */}
               <Text variant="labelMedium" style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant }]}>
-                SELECT SUBJECT
+                Select subject
               </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
                 <Chip

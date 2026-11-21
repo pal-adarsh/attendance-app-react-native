@@ -27,8 +27,8 @@ const GradientCard = ({
     return {
       transform: [{ scale: scale.value }],
       borderColor: isDark
-        ? `rgba(187, 134, 252, ${borderOpacity.value})`
-        : `rgba(109, 40, 217, ${borderOpacity.value})`,
+        ? `rgba(255, 107, 0, ${borderOpacity.value})`
+        : `rgba(234, 88, 12, ${borderOpacity.value})`,
       borderWidth: 1.5,
     };
   });

@@ -73,7 +73,7 @@ const AddExtraClassModal = ({ visible, onDismiss, date, subjects = [], onSaved }
               showsVerticalScrollIndicator={false}
             >
               <Text variant="labelMedium" style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant }]}>
-                SELECT SUBJECT
+                Select subject
               </Text>
               {subjects.length === 0 ? (
                 <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 13, marginBottom: 12 }}>
@@ -112,7 +112,7 @@ const AddExtraClassModal = ({ visible, onDismiss, date, subjects = [], onSaved }
               )}
 
               <Text variant="labelMedium" style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant, marginTop: 14 }]}>
-                ATTENDANCE STATUS
+                Attendance status
               </Text>
               <View style={styles.statusRow}>
                 {[
@@ -173,7 +173,7 @@ const AddExtraClassModal = ({ visible, onDismiss, date, subjects = [], onSaved }
                 contentStyle={{ paddingVertical: 4 }}
                 labelStyle={{ color: '#FFF', fontWeight: 'bold', fontSize: 15 }}
               >
-                Add to Attendance
+                Add lecture
               </Button>
             </View>
           </LinearGradient>
