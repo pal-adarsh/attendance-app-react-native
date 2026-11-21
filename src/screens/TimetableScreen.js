@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
 import GradientCard from '../components/GradientCard';
 import ShareTimetableModal from '../components/ShareTimetableModal';
+import ErrorStateCard from '../components/ErrorStateCard';
 import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
@@ -23,6 +24,7 @@ const TimetableScreen = () => {
     const [selectedDay, setSelectedDay] = useState('Monday');
     const [isSaturdayEnabled, setIsSaturdayEnabled] = useState(false);
     const [shareModalVisible, setShareModalVisible] = useState(false);
+    const [loadError, setLoadError] = useState(null);
 
     useFocusEffect(
         useCallback(() => {
@@ -31,6 +33,7 @@ const TimetableScreen = () => {
     );
 
     const loadData = async () => {
+        setLoadError(null);
         try {
             const [loadedSubjects, loadedTimetable, satEnabled] = await Promise.all([
                 StorageService.loadSubjects(),
@@ -42,6 +45,7 @@ const TimetableScreen = () => {
             setIsSaturdayEnabled(satEnabled);
         } catch (e) {
             console.error('Failed to load timetable data', e);
+            setLoadError("Couldn't load your timetable. Please check device storage and retry.");
         }
     };
 
@@ -187,7 +191,13 @@ const TimetableScreen = () => {
                     </View>
                 </View>
 
-                {subjects.length === 0 ? (
+                {loadError ? (
+                    <ErrorStateCard
+                        title="Couldn't load schedule"
+                        message={loadError}
+                        onRetry={loadData}
+                    />
+                ) : subjects.length === 0 ? (
                     <GradientCard gradient={cardGradient} style={styles.emptyCard}>
                         <View style={styles.emptyContent}>
                             <MaterialCommunityIcons name="book-open-page-variant-outline" size={44} color={theme.colors.onSurfaceVariant} style={{ marginBottom: 8 }} />

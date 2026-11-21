@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import Animated, { FadeInDown, ZoomIn, useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import GradientCard from '../components/GradientCard';
 import AddExtraClassModal from '../components/AddExtraClassModal';
+import ErrorStateCard from '../components/ErrorStateCard';
 import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
@@ -26,6 +27,7 @@ const DailyAttendanceScreen = () => {
     const [isSaturdayEnabled, setIsSaturdayEnabled] = useState(false);
     const [forceSaturdayWorking, setForceSaturdayWorking] = useState(false);
     const [extraModalVisible, setExtraModalVisible] = useState(false);
+    const [loadError, setLoadError] = useState(null);
 
     useFocusEffect(
         useCallback(() => {
@@ -34,6 +36,7 @@ const DailyAttendanceScreen = () => {
     );
 
     const loadData = async () => {
+        setLoadError(null);
         try {
             const todayDate = toLocalDateString();
             const [allSubjects, timetable, profile, holidays, satEnabled, records] = await Promise.all([
@@ -71,6 +74,7 @@ const DailyAttendanceScreen = () => {
             setExtraRecords(extras);
         } catch (e) {
             console.error('Failed to load today data', e);
+            setLoadError("Couldn't load attendance data. Please check device storage and retry.");
         }
     };
 
@@ -227,8 +231,14 @@ const DailyAttendanceScreen = () => {
                     </View>
                 </Animated.View>
 
-                {/* Holiday Banner if today is marked as holiday */}
-                {isHoliday ? (
+                {/* Error State with Actionable Retry */}
+                {loadError ? (
+                    <ErrorStateCard
+                        title="Couldn't load today's classes"
+                        message={loadError}
+                        onRetry={loadData}
+                    />
+                ) : isHoliday ? (
                     <Animated.View entering={FadeInDown.duration(500)} style={styles.holidayBanner}>
                         <LinearGradient colors={isDark ? gradients.darkCard : gradients.lightCard} style={styles.holidayCard}>
                             <MaterialCommunityIcons name="island" size={36} color={theme.colors.attendanceYellow} style={{ marginBottom: 8 }} />

@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import GradientCard from '../components/GradientCard';
 import AddExtraClassModal from '../components/AddExtraClassModal';
+import ErrorStateCard from '../components/ErrorStateCard';
 import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
@@ -26,6 +27,7 @@ const CalendarScreen = () => {
     const [attendanceStatus, setAttendanceStatus] = useState({});
     const [extraRecords, setExtraRecords] = useState([]);
     const [extraModalVisible, setExtraModalVisible] = useState(false);
+    const [loadError, setLoadError] = useState(null);
 
     useFocusEffect(
         useCallback(() => {
@@ -34,6 +36,7 @@ const CalendarScreen = () => {
     );
 
     const loadData = async () => {
+        setLoadError(null);
         try {
             const [allSubjects, loadedTimetable, records, loadedHolidays, satEnabled] = await Promise.all([
                 StorageService.loadSubjects(),
@@ -51,6 +54,7 @@ const CalendarScreen = () => {
             applyRecordsForDate(records, selectedDate);
         } catch (e) {
             console.error('Failed to load calendar data', e);
+            setLoadError("Couldn't load calendar data. Please check storage and retry.");
         }
     };
 
@@ -271,7 +275,13 @@ const CalendarScreen = () => {
                         </View>
                     </View>
 
-                    {isSelectedDateHoliday ? (
+                    {loadError ? (
+                        <ErrorStateCard
+                            title="Couldn't load calendar data"
+                            message={loadError}
+                            onRetry={loadData}
+                        />
+                    ) : isSelectedDateHoliday ? (
                         <GradientCard gradient={cardGradient} style={styles.infoCard}>
                             <View style={styles.infoContent}>
                                 <MaterialCommunityIcons name="island" size={32} color={theme.colors.attendanceYellow} style={{ marginBottom: 6 }} />

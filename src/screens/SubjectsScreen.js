@@ -15,6 +15,7 @@ import Animated, {
 import GradientCard from '../components/GradientCard';
 import AddEditSubjectModal from '../components/AddEditSubjectModal';
 import AnimatedProgressBar from '../components/AnimatedProgressBar';
+import ErrorStateCard from '../components/ErrorStateCard';
 import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
@@ -28,6 +29,7 @@ const SubjectsScreen = () => {
     const [subjects, setSubjects] = useState([]);
     const [modalVisible, setModalVisible] = useState(false);
     const [editingSubject, setEditingSubject] = useState(null);
+    const [loadError, setLoadError] = useState(null);
 
     const fabScale = useSharedValue(1);
 
@@ -49,11 +51,13 @@ const SubjectsScreen = () => {
     );
 
     const loadData = async () => {
+        setLoadError(null);
         try {
             const data = await StorageService.loadSubjects();
             setSubjects(data);
         } catch (e) {
             console.error('Failed to load subjects', e);
+            setLoadError("Couldn't load subjects. Please check device storage and retry.");
         }
     };
 
@@ -159,7 +163,15 @@ const SubjectsScreen = () => {
 
     return (
         <LinearGradient colors={backgroundGradient} style={styles.container}>
-            {subjects.length === 0 ? (
+            {loadError ? (
+                <View style={{ padding: 16 }}>
+                    <ErrorStateCard
+                        title="Couldn't load subjects"
+                        message={loadError}
+                        onRetry={loadData}
+                    />
+                </View>
+            ) : subjects.length === 0 ? (
                 <Animated.View entering={FadeInDown.duration(500)} style={styles.emptyState}>
                     <MaterialCommunityIcons name="book-open-page-variant-outline" size={44} color={theme.colors.onSurfaceVariant} style={{ marginBottom: 8 }} />
                     <Text variant="titleLarge" style={[styles.emptyTitle, { color: theme.colors.text }]}>
@@ -204,6 +216,7 @@ const SubjectsScreen = () => {
                                                 <IconButton
                                                     icon="pencil"
                                                     size={20}
+                                                    hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
                                                     onPress={() => openEditModal(item)}
                                                     iconColor={theme.colors.primary}
                                                     accessibilityLabel="Edit subject"
@@ -211,6 +224,7 @@ const SubjectsScreen = () => {
                                                 <IconButton
                                                     icon="note-text-outline"
                                                     size={20}
+                                                    hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
                                                     onPress={() => navigation.navigate('NoteEditor', { subjectId: item.id })}
                                                     iconColor={theme.colors.onSurfaceVariant}
                                                     accessibilityLabel="Subject notes"
@@ -218,6 +232,7 @@ const SubjectsScreen = () => {
                                                 <IconButton
                                                     icon="history"
                                                     size={20}
+                                                    hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
                                                     onPress={() => clearSubjectHistory(item.id)}
                                                     iconColor={theme.colors.onSurfaceVariant}
                                                     accessibilityLabel="Clear history"
@@ -225,6 +240,7 @@ const SubjectsScreen = () => {
                                                 <IconButton
                                                     icon="delete"
                                                     size={20}
+                                                    hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
                                                     onPress={() => deleteSubject(item.id)}
                                                     iconColor={theme.colors.error}
                                                     accessibilityLabel="Delete subject"

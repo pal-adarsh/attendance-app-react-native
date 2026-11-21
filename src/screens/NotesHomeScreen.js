@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Animated, { FadeInDown, Layout, FadeIn } from 'react-native-reanimated';
 import { Swipeable } from 'react-native-gesture-handler';
+import ErrorStateCard from '../components/ErrorStateCard';
 import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import * as Haptics from 'expo-haptics';
@@ -62,6 +63,7 @@ const NotesHomeScreen = ({ route }) => {
     const [sortMenuVisible, setSortMenuVisible] = useState(false);
     const [contextMenuNote, setContextMenuNote] = useState(null);
     const [newTodoText, setNewTodoText] = useState('');
+    const [loadError, setLoadError] = useState(null);
 
     const listRef = useRef(null);
     const todoInputRef = useRef(null);
@@ -77,6 +79,7 @@ const NotesHomeScreen = ({ route }) => {
     );
 
     const loadData = async () => {
+        setLoadError(null);
         try {
             const [allNotes, allTodos, allSubjects] = await Promise.all([
                 StorageService.loadNotes(),
@@ -88,6 +91,7 @@ const NotesHomeScreen = ({ route }) => {
             setSubjects(allSubjects);
         } catch (e) {
             console.error('Failed to load notes & todos data', e);
+            setLoadError("Couldn't load notes or tasks. Please check storage and retry.");
         }
     };
 
@@ -444,7 +448,15 @@ const NotesHomeScreen = ({ route }) => {
                 />
             </View>
 
-            {activeTab === 'notes' ? (
+            {loadError ? (
+                <View style={{ paddingHorizontal: 16 }}>
+                    <ErrorStateCard
+                        title="Couldn't load data"
+                        message={loadError}
+                        onRetry={loadData}
+                    />
+                </View>
+            ) : activeTab === 'notes' ? (
                 <>
                     <View style={styles.filterRow}>
                         <View style={styles.filterChips}>

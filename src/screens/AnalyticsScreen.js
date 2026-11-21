@@ -9,6 +9,7 @@ import * as Haptics from 'expo-haptics';
 import GradientCard from '../components/GradientCard';
 import AnimatedProgressBar from '../components/AnimatedProgressBar';
 import BunkSimulatorModal from '../components/BunkSimulatorModal';
+import ErrorStateCard from '../components/ErrorStateCard';
 import { StorageService } from '../utils/storage';
 import { useThemeContext } from '../utils/ThemeContext';
 import { toLocalDateString } from '../utils/dateUtils';
@@ -73,6 +74,7 @@ const AnalyticsScreen = ({ navigation }) => {
     const [allRecords, setAllRecords] = useState([]);
     const [period, setPeriod] = useState('all');
     const [simulatorVisible, setSimulatorVisible] = useState(false);
+    const [loadError, setLoadError] = useState(null);
 
     useFocusEffect(
         useCallback(() => {
@@ -94,6 +96,7 @@ const AnalyticsScreen = ({ navigation }) => {
     }, [navigation, theme.colors.text]);
 
     const loadData = async () => {
+        setLoadError(null);
         try {
             const [subjects, records] = await Promise.all([
                 StorageService.loadSubjects(),
@@ -103,6 +106,7 @@ const AnalyticsScreen = ({ navigation }) => {
             setAllRecords(records);
         } catch (e) {
             console.error('Failed to load analytics data', e);
+            setLoadError("Couldn't load analytics data. Please check device storage and retry.");
         }
     };
 
@@ -202,8 +206,16 @@ const AnalyticsScreen = ({ navigation }) => {
     return (
         <LinearGradient colors={backgroundGradient} style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
-                {/* Period Filter */}
-                <Animated.View entering={FadeInDown.duration(400)} style={styles.filterRow}>
+                {loadError ? (
+                    <ErrorStateCard
+                        title="Couldn't load analytics"
+                        message={loadError}
+                        onRetry={loadData}
+                    />
+                ) : (
+                    <>
+                        {/* Period Filter */}
+                        <Animated.View entering={FadeInDown.duration(400)} style={styles.filterRow}>
                     {PERIODS.map(p => (
                         <Chip
                             key={p.key}
@@ -491,6 +503,8 @@ const AnalyticsScreen = ({ navigation }) => {
                             </Animated.View>
                         );
                     })
+                )}
+                    </>
                 )}
             </ScrollView>
 
